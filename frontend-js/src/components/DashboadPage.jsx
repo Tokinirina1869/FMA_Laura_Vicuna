@@ -65,7 +65,7 @@ function DashboardPage({ autre }) {
       paiementsSemaine: [],
       paiementsMois: []
     },
-    dailyTotals: [] // Nouveau : inscriptions par jour
+    dailyTotals: []
   });
 
   const fetchAllData = async () => {
@@ -93,7 +93,7 @@ function DashboardPage({ autre }) {
           paiementsSemaine: data.paiements_semaine || [],
           paiementsMois: data.paiements_mois || []
         },
-        dailyTotals: data.inscriptions_par_jour || [] // Récupération
+        dailyTotals: data.inscriptions_par_jour || [] 
       });
 
     } catch (err) {
@@ -157,7 +157,7 @@ function DashboardPage({ autre }) {
 
   // Composant pour les graphiques vides
   const EmptyChart = ({ message }) => (
-    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+    <div className="flex flex-col items-center text-center justify-center h-64 text-gray-500">
       <FaExclamationTriangle className="w-12 h-12 mb-2" />
       <p className="text-center">{message}</p>
     </div>
@@ -173,7 +173,7 @@ function DashboardPage({ autre }) {
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Tableau de bord Général</h1>
         </div>
         <button 
-          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.02] active:scale-95"
+          className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.02] active:scale-95"
           onClick={autre} 
         >
           Autre Pages <FaArrowRight />

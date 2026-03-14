@@ -51,21 +51,33 @@ class InscriptionCompleteController extends Controller
         ]);
     }
     
-    public function listeFormation()
+ 
+
+    public function listeFormation(Request $request)
     {
-        $data = FormationModel::with(['inscription.personne', 'parcours'])
-            ->whereDoesntHave('inscription', function ($query) {
-                $query->whereHas('inscriptionacademique'); 
-            })
-            ->get();
+        $anneeScolaire = $request->input('annee_scolaire');
+
+        $query = FormationModel::with(['inscription.personne', 'parcours'])
+            ->whereDoesntHave('inscription', function ($q) {
+                $q->whereHas('inscriptionacademique'); 
+            });
+
+        if ($anneeScolaire) {
+            $query->whereHas('inscription', function ($q) use ($anneeScolaire) {
+                $q->where('anneesco', $anneeScolaire);
+            });
+        }
+
+        $data = $query->get();
 
         return response()->json([
             'Status'  => 'Succès',
-            'Message' => 'Liste des personnes inscrites uniquement à une formation',
+            'Message' => $anneeScolaire 
+                ? "Liste des apprenants en formation pour l'année $anneeScolaire"
+                : "Liste de tous les apprenants en formation",
             'data'    => $data,
         ]);
     }
-
 
     public function show()
     {
@@ -130,15 +142,14 @@ class InscriptionCompleteController extends Controller
 
     }
 
-
-
     public function filter(Request $request)
     {
-        $typeFormation = $request->type_formation;
+        $duree = $request->duree;
         $nomFormation  = $request->nom_formation;
         $anneeScolaire = $request->annee_scolaire;
+        $anneeEtude = $request->annee_etude;
 
-        $apprenants = FormationModel::select(
+        $query = FormationModel::select(
                 'inscrit_formations.no_inscrit',
                 'pe.matricule',
                 'pe.nom',
@@ -147,18 +158,22 @@ class InscriptionCompleteController extends Controller
                 'pe.lieunaiss',
                 'pe.sexe',
                 'pe.adresse',
-                'inscrit_formations.type_formation',
-                'p.nomformation',
-                'inscrit_formations.duree'
+                'inscrit_formations.duree',
+                'p.nomformation'
             )
             ->join('inscriptions as i', 'inscrit_formations.no_inscrit', '=', 'i.no_inscrit')
             ->join('personnes as pe', 'i.matricule', '=', 'pe.matricule')
             ->join('suivres as s', 'inscrit_formations.no_inscrit', '=', 's.no_inscrit')
             ->join('parcours as p', 's.code_formation', '=', 'p.code_formation')
-            ->where('inscrit_formations.type_formation', $typeFormation)
+            ->where('inscrit_formations.duree', $duree)
             ->where('p.nomformation', $nomFormation)
-            ->where('i.anneesco', $anneeScolaire)
-            ->get();
+            ->where('i.anneesco', $anneeScolaire);
+
+        if (!empty($anneeEtude)) {
+            $query->where('inscrit_formations.annee_etude', $anneeEtude);
+        }
+
+        $apprenants = $query->get();
 
         return response()->json([
             'Status'  => 'Succès',
@@ -240,7 +255,7 @@ class InscriptionCompleteController extends Controller
         return response()->json($results);
     }
     
-    public function shwoByMatricule($matricule)
+    public function showByMatricule($matricule)
     {
         $inscription = Inscription::where('matricule', $matricule)
                         ->with(['personne', 'inscriptionacademique.niveau', 'parcours'])
@@ -384,6 +399,7 @@ class InscriptionCompleteController extends Controller
             'anneesco'       => 'required|string|max:20',
             'duree'          => 'required|string|max:50',
             'type_formation' => 'required|string|max:100',
+            'annee_etude'    => 'nullable|string|max:100',
             'parcours'       => 'required|array',
             'cin'            => 'nullable|string|max:12',
             'photo'          => 'nullable|file|mimes:jpeg,png,jpg,gif',
@@ -395,6 +411,7 @@ class InscriptionCompleteController extends Controller
             $annee = date('y');
             $personne = null;
 
+            // Recherche de la personne existante
             if (!empty($request->cin)) {
                 $personne = Personne::where('cin', $request->cin)->first();
             } else {
@@ -404,19 +421,27 @@ class InscriptionCompleteController extends Controller
                     ->first();
             }
 
-
-            // ----------------------------
-            // 3️⃣ Déterminer le numéro unique global
-            // ----------------------------
+            // Vérifier si cette personne a déjà une inscription pour l'année scolaire donnée
             if ($personne) {
-                // Personne existante → récupérer le numéro existant
+                $existingInscription = Inscription::where('matricule', $personne->matricule)
+                    ->where('anneesco', $request->anneesco)
+                    ->first();
+                if ($existingInscription) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Cet élève est déjà inscrit pour cette année scolaire.'
+                    ], 409);
+                }
+            }
+
+            // Déterminer le numéro unique global
+            if ($personne) {
                 if (preg_match('/\/(\d+)$/', $personne->matricule, $matches)) {
                     $numero = (int)$matches[1];
                 } else {
                     $numero = 1;
                 }
             } else {
-                // Nouvelle personne → incrémente le dernier numéro global
                 $dernier = Personne::orderByRaw("CAST(SPLIT_PART(matricule, '/', 3) AS INTEGER) DESC")->first();
                 if ($dernier && preg_match('/\/(\d+)$/', $dernier->matricule, $matches)) {
                     $numero = (int)$matches[1] + 1;
@@ -425,9 +450,7 @@ class InscriptionCompleteController extends Controller
                 }
             }
 
-            // ----------------------------
-            // 4️⃣ Gérer la photo si présente
-            // ----------------------------
+            // Gérer la photo
             $personneData = array_filter($request->only([
                 'nom','prenom','naiss','lieunaiss','sexe','adresse','cin','email','datedel','lieucin',
                 'nompere','nommere','nomtuteur','adressparent','adresstuteur',
@@ -439,54 +462,42 @@ class InscriptionCompleteController extends Controller
                 $personneData['photo'] = $path;
             }
 
-            // ----------------------------
-            // 5️⃣ Création ou mise à jour de la personne
-            // ----------------------------
+            // Création ou mise à jour de la personne
             if ($personne) {
                 $personne->update($personneData);
-            } 
-            else {
-                // Générer le matricule pour le premier parcours
+            } else {
                 $firstNomFormation = $request->input('parcours')[0]['nomformation'] ?? null;
                 $parcours = Parcours::where('nomformation', $firstNomFormation)->first();
                 $codeFormation = $parcours ? $parcours->code_formation : 'XXX';
                 $matricule = "{$annee}/{$codeFormation}/" . str_pad($numero, 2, '0', STR_PAD_LEFT);
-
                 $personneData['matricule'] = $matricule;
                 $personne = Personne::create($personneData);
             }
 
-            // ----------------------------
-            // 6️⃣ Création de l'inscription principale
-            // ----------------------------
+            // Création de l'inscription
             $inscription = Inscription::create([
-                'matricule'      => $personne->matricule, // numéro global avec code formation du premier parcours
+                'matricule'      => $personne->matricule,
                 'dateinscrit'    => $request->dateinscrit,
                 'anneesco'       => $request->anneesco,
                 'duree'          => $request->duree ?? null,
                 'type_formation' => $request->type_formation,
             ]);
 
-              // 6️⃣ FORMATION
+            // Création de la formation
             FormationModel::create([
                 'no_inscrit'     => $inscription->no_inscrit,
                 'duree'          => $request->duree ?? null,
                 'type_formation' => $request->type_formation,
+                'annee_etude'    => $request->annee_etude,
             ]);
-            // ----------------------------
-            // 7️⃣ Enregistrer tous les parcours choisis
-            // ----------------------------
+
+            // Enregistrer les parcours
             foreach ($request->parcours as $p) {
                 if (!empty($p['nomformation'])) {
                     $formation = Parcours::firstOrCreate(
                         ['nomformation' => $p['nomformation']],
                         ['datedebut' => $p['datedebut'] ?? null]
                     );
-
-                    // Générer le matricule spécifique à ce parcours
-                    $matriculeParcours = "{$annee}/{$formation->code_formation}/" . str_pad($numero, 2, '0', STR_PAD_LEFT);
-
-                    // On peut stocker ce matricule spécifique pour le parcours si besoin
                     $inscription->parcours()->syncWithoutDetaching([$formation->code_formation]);
                 }
             }

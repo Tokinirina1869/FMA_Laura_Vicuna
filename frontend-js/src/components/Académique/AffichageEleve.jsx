@@ -35,7 +35,9 @@ import NouvelleInscription from "../modals/NouvelleInscription";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { ThemeContext } from "../ThemeContext";
-import ReinscriptionLycee from "../modals/ReinscriptionLycee";
+import fma from '../../../public/laura.jpg';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const url = 'http://localhost:8000/api';
 
@@ -51,21 +53,17 @@ function AffichageEleve() {
     const [classe, setClasse] = useState([]);
     const [selectedImage, setSelectedImage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchMat, setSearchMat] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [activeCategory, setActiveCategory] = useState('Tous');
     const [dateDebut, setDateDebut] = useState("");
     const [dateFin, setDateFin] = useState("");
+    const [anneeFilter, setAnneeFilter] = useState("");
 
     const ITEMS_PER_PAGE = 14;
     const { theme } = useContext(ThemeContext);
     
     const isDark = theme === 'dark';
 
-    const openIncription = (pers = null) => { 
-        setSearchPersonne(pers); 
-        setShowInscription(true); 
-    };
     const closeIncription = () => { 
         setShowInscription(false); 
         setSearchPersonne(null); 
@@ -177,7 +175,8 @@ function AffichageEleve() {
                 icon: 'warning',
                 title: 'Attention',
                 text: 'Veuillez sélectionner les deux dates pour filtrer.',
-                customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
+                background: '#1e1e2f',
+                color: 'white'
             });
             return;
         }
@@ -278,82 +277,7 @@ function AffichageEleve() {
         }
     }
 
-    const handleSearchMat = async () => {
-        if(!searchMat.trim()){
-            Swal.fire({
-                title: 'Attention',
-                text: 'Veuillez entrer un matricule pour la recherche.',
-                icon: 'warning',
-                customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-            });
-            return;
-        }
-    
-        const urlMat = `${url}/personne/matricule/${searchMat.trim()}`;
-        setLoading(true);
-    
-        try{
-            const res = await axios.get(urlMat);
-            const personneData = res.data;
-    
-            if(personneData && Object.keys(personneData).length > 0) {
-                openIncription(personneData);
-    
-                Swal.fire({
-                    icon: 'success',
-                    text: `Matricule trouvé : ${personneData.personne?.nom} ${personneData.personne?.prenom}. Les données sont prêtes.`,
-                    background: isDark ? '#1e1e2f' : '#fff',
-                    color: isDark ? 'white' : 'black',
-                    timer: 3000,
-                    position: "center",
-                    showConfirmButton: false,
-                });
-            }
-            else {
-                Swal.fire({
-                    title: 'Introuvable',
-                    text: `Aucune personne trouvée avec le matricule ${searchMat}.`,
-                    icon: 'error',
-                    customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-                });
-            }
-    
-        } 
-        catch (error) {
-            console.error("Erreur de recherche par matricule:", error);
-            Swal.fire({
-                title: 'Erreur',
-                text: 'Impossible de récupérer les données pour ce matricule.',
-                icon: 'error',
-                customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-            });
-        } 
-        finally {
-            setLoading(false);
-            setSearchMat("");
-        }
-    }
-
-    const resetFilters = () => {
-        fetchNiveauxOnly();
-        setSearchQuery("");
-        setActiveCategory("Tous");
-        setDateDebut("");
-        setDateFin("");
-        setSearchMat("");
-        setCurrentPage(1);
-        Swal.fire({
-            icon:'info', 
-            title:'Réinitialisation de la liste', 
-            timer:1500, 
-            showConfirmButton:false,
-            background: '#1e1e2f',
-            color: 'white',
-            position: "center",
-        });
-    };
-
-    const filterEleves = (elevesList, query, category) => {
+    const filterEleves = (elevesList, query, category, annee) => {
         return elevesList.filter(eleve => {
             const q = query.toLowerCase().trim();
             
@@ -371,13 +295,15 @@ function AffichageEleve() {
                 if (!hasMatchingClasse) return false;
             }
 
+            if(annee && eleve.inscription?.anneesco !== annee) return false;
+
             return true;
         });
     };
 
     const filteredEleves = useMemo(() => {
-        return filterEleves(niveaux, searchQuery, activeCategory);
-    }, [niveaux, searchQuery, activeCategory]);
+        return filterEleves(niveaux, searchQuery, activeCategory, anneeFilter);
+    }, [niveaux, searchQuery, activeCategory, anneeFilter]);
 
     const totalPages = Math.ceil(filteredEleves.length / ITEMS_PER_PAGE);
     const currentData = filteredEleves.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -386,13 +312,236 @@ function AffichageEleve() {
         if (page >= 1 && page <= totalPages) setCurrentPage(page);
     };
 
-    const handlePrintCarte = () => {
-        window.print();
-    };
+    const handleExportCarte = async () => {
+        if (!selectedPersonne) return;
+        
+        // Créer un élément temporaire pour le rendu PDF
+        const element = document.createElement('div');
+        element.style.position = 'absolute';
+        element.style.left = '-9999px';
+        element.style.width = '400px'; // Largeur de la carte
+        element.style.padding = '20px';
+        element.style.backgroundColor = 'white';
+        element.style.fontFamily = 'Arial, sans-serif';
+        
+        // Formater la date
+        const formatDate = (dateStr) => {
+          if (!dateStr) return "Non renseigné";
+          try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
+          } catch {
+            return dateStr;
+          }
+        };
+        
+        // HTML de la carte étudiante
+        element.innerHTML = `
+          <div style="border: 2px solid #4f46e5; border-radius: 10px; overflow: hidden;">
+            <!-- En-tête -->
+            <div style="background: linear-gradient(to right, #4f46e5, #7c3aed); color: white; padding: 15px; text-align: center;">
+              <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <div style="width: 40px; height: 40px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                  <img src="${fma}" alt="FMA" style="width: 30px; height: 30px; border-radius: 50%;" />
+                </div>
+                <div style="margin: 0 10px;">
+                  <h3 style="margin: 0; font-size: 14px; font-weight: bold;">CFP LAURA VICUNA</h3>
+                  <p style="margin: 0; font-size: 10px; opacity: 0.9;">ANJARASOA Anjarasoa Ankofafa</p>
+                </div>
+                <div style="width: 40px; height: 40px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                  <span style="color: #4f46e5; font-size: 18px;">🎓</span>
+                </div>
+              </div>
+              <p style="margin: 0; font-size: 11px; font-weight: bold;">LYCEE CATHOLIQUE Laura Vicuna</p>
+              <p style="margin: 0; font-size: 10px; opacity: 0.9;">FMA Anjarasoa Ankofafa Fianarantsoa</p>
+            </div>
+      
+            <!-- Photo et infos principales -->
+            <div style="padding: 15px;">
+              <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <!-- Photo -->
+                <div style="flex-shrink: 0;">
+                  <div style="width: 80px; height: 80px; background: #f3f4f6; border-radius: 8px; border: 2px solid #4f46e5; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    ${selectedPersonne.inscription?.personne?.photo ? 
+                      `<img src="http://localhost:8000/storage/${selectedPersonne.inscription.personne.photo}" 
+                           alt="Photo" 
+                           style="width: 100%; height: 100%; object-fit: cover;" />` : 
+                      '<span style="color: #9ca3af; font-size: 24px;">👤</span>'}
+                  </div>
+                </div>
+                
+                <!-- Informations principales -->
+                <div style="flex-grow: 1;">
+                  <h2 style="margin: 0 0 5px 0; font-size: 16px; font-weight: bold; color: #1f2937;">
+                    ${selectedPersonne.inscription?.personne?.nom} ${selectedPersonne.inscription?.personne?.prenom}
+                  </h2>
+                  <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                    <span style="color: #ec4899; margin-right: 5px;">⚤</span>
+                    <span style="font-size: 12px; color: #4b5563;">
+                      Sexe: <b>${selectedPersonne.inscription?.personne?.sexe || "Non spécifié"}</b>
+                    </span>
+                  </div>
+                  ${selectedPersonne.parcours && selectedPersonne.parcours.length > 0 ? `
+                    <div style="display: flex; align-items: center;">
+                      <span style="color: #10b981; margin-right: 5px;">📚</span>
+                      <span style="font-size: 12px; color: #4b5563;">
+                        Classe : <b>${selectedPersonne.niveau?.nomniveau}</b>
+                      </span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+      
+              <!-- Informations détaillées -->
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 10px;">
+                <!-- Matricule -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-size: 11px; font-weight: bold; color: #4b5563;">Numero Matricule:</span>
+                  <span style="font-size: 11px; font-weight: bold; color: #1f2937;">
+                    ${selectedPersonne.inscription?.personne?.matricule || 'N/A'}
+                  </span>
+                </div>
+                
+                <!-- Date de naissance -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-size: 11px; font-weight: bold; color: #4b5563;">Date de Naissance:</span>
+                  <span style="font-size: 11px; font-weight: bold; color: #1f2937;">
+                    ${formatDate(selectedPersonne.inscription?.personne?.naiss)}
+                  </span>
+                </div>
+                
+                <!-- Lieu de naissance -->
+                ${selectedPersonne.inscription?.personne?.lieunaiss ? `
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #4b5563;">Lieu de Naissance:</span>
+                    <span style="font-size: 11px; color: #1f2937; text-align: right;">
+                      ${selectedPersonne.inscription.personne.lieunaiss}
+                    </span>
+                  </div>
+                ` : ''}
+                
+                <!-- CIN -->
+                ${selectedPersonne.inscription?.personne?.cin ? `
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #4b5563;">CIN:</span>
+                    <span style="font-size: 11px; font-weight: bold; color: #1f2937;">
+                      ${selectedPersonne.inscription.personne.cin || "Mineur"}
+                    </span>
+                  </div>
+                ` : ''}
+                
+                <!-- Formation -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; background: linear-gradient(to right, #e0e7ff, #ede9fe); padding: 8px; border-radius: 5px;">
+                  <span style="font-size: 11px; font-weight: bold; color: #4f46e5;">Classe:</span>
+                  <span style="font-size: 11px; font-weight: bold; color: #4f46e5;">
+                    ${selectedPersonne.niveau?.nomniveau}
+                  </span>
+                </div>
+                
+                <!-- Date d'expiration -->
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #d1d5db;">
+                  <span style="font-size: 11px; font-weight: bold; color: #4b5563;">Expire le:</span>
+                  <span style="font-size: 11px; font-weight: bold; color: #dc2626;">
+                    ${(() => {
+                      if (selectedPersonne.inscription?.dateinscrit) {
+                        const date = new Date(selectedPersonne.inscription.dateinscrit);
+                        date.setFullYear(date.getFullYear() + 1);
+                        return date.toLocaleDateString('fr-FR');
+                      }
+                      return "31/08/2024";
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+      
+            <!-- Pied de page -->
+            <div style="background: #f9fafb; padding: 12px; border-top: 1px solid #e5e7eb; text-align: center;">
+              <p style="margin: 0 0 5px 0; font-size: 10px; font-weight: bold; color: #4b5563;">
+                Lycee Catholique Laura Vicuna Anjarasoa
+              </p>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; color: #6b7280;">
+                <span>Tél: +261 38 29 112 335</span>
+                <span>Ankofafa Fianarantsoa</span>
+              </div>
+              <p style="margin: 10px 0 0 0; font-size: 9px; color: #6b7280; font-style: italic;">
+                Carte valable pour l'année scolaire ${selectedPersonne.inscription?.anneesco || '2023-2024'}
+              </p>
+            </div>
+          </div>
+        `;
+        
+        // Ajouter au DOM
+        document.body.appendChild(element);
+        
+        try {
+          // Utiliser html2canvas pour capturer l'élément
+          const canvas = await html2canvas(element, {
+            scale: 2, // Haute résolution pour un PDF de qualité
+            useCORS: true, // Autoriser les images cross-origin
+            backgroundColor: '#ffffff'
+          });
+          
+          // Créer le PDF
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a6' // Format carte (105mm × 148mm)
+          });
+          
+          // Ajouter l'image au PDF
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 105; // Largeur A6 en mm
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          
+          // Télécharger le PDF
+          const fileName = `Carte-etudiant-${selectedPersonne.inscription?.personne?.matricule || 'sans-matricule'}.pdf`;
+          pdf.save(fileName);
+          
+          // Afficher un message de succès
+          Swal.fire({
+            icon: 'success',
+            title: 'PDF généré avec succès !',
+            text: `La carte de ${selectedPersonne.inscription?.personne?.nom} a été exportée.`,
+            background: isDark ? '#1e1e2f' : '#fff',
+            color: isDark ? 'white' : 'black',
+            timer: 2000,
+            showConfirmButton: false,
+            position: "center"
+          });
+          
+        } catch (error) {
+          console.error('Erreur lors de la génération du PDF:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Erreur',
+            text: 'Impossible de générer le PDF. Veuillez réessayer.',
+            customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
+          });
+        } finally {
+          // Nettoyer: supprimer l'élément temporaire
+          document.body.removeChild(element);
+        }
+      };
 
     // Fonction de rafraîchissement
     const refreshData = () => {
         fetchAllData();
+    };
+
+    const generateAnnee = () => {
+        const currentAnnee = new Date().getFullYear();
+        const years = [];
+        for (let annee = 2020; annee <= currentAnnee; annee++) {
+            years.push(`${annee}-${annee + 1}`);
+        }
+        return years.reverse();
     };
 
     return (
@@ -459,15 +608,11 @@ function AffichageEleve() {
                     
                     <div className="lg:col-span-1 flex gap-3">
                         <button onClick={handleSearchByDate} disabled={loading} 
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg shadow font-semibold transition duration-200 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg shadow font-semibold transition duration-200 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
                             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FaSearch className="w-4 h-4" />}
-                            {loading ? 'Chargement...' : 'Chercher Date'}
+                            {loading ? 'Chargement...' : 'Recherche entre deux Date'}
                         </button>
                         
-                        <button onClick={resetFilters} 
-                            className="px-4 py-2 bg-red-500 text-white rounded-lg shadow font-semibold hover:bg-red-600 transition">
-                            <XCircle className="w-5 h-5" />
-                        </button>
                     </div>
                 </div>
 
@@ -489,36 +634,35 @@ function AffichageEleve() {
                             </button>
                         ))}
                     </div>
-                    
-                    <div className="flex items-stretch gap-2 w-full sm:w-auto">
-                        <input type="text" placeholder="Rechercher par Matricule (Autofill)" value={searchMat} 
-                            onChange={(e) => setSearchMat(e.target.value)}
-                            className={`flex-grow sm:min-w-[250px] pl-4 pr-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500`}/>
-                        <button onClick={handleSearchMat} disabled={loading} 
-                            className={`px-4 py-2 text-white rounded-lg shadow font-semibold transition ${
-                                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                            }`}>
-                            <FaSearch className="w-5 h-5" />
-                        </button>
+
+                    <div className="flex flex-wrap gap-2">
+                        <label className="text-center text-medium">Filtre par année scolaire </label>
+                        <select id="anneeScolaire" value={anneeFilter} onChange={(e) => {setAnneeFilter(e.target.value); setCurrentPage(1)}}
+                            className="text-center p-2 rounded shadow-sm"
+                            required
+                        >
+                            <option value="">--- Toutes les annees---</option>
+                            {generateAnnee().map(a => <option key={a}>{a}</option>)}
+                        </select>
                     </div>
                 </div>
             </div>
 
             <div className={`hidden md:block shadow-xl rounded-xl ring-1 ring-gray-200/50 overflow-x-auto transition duration-300`}>
                 <div className="max-h-[70vh] overflow-y-auto">
-                    <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                        <thead className="bg-indigo-600 text-white sticky top-0">
+                    <table className="table table-hove table-striped">
+                        <thead className="p-3 sticky top-0 bg-indigo-600">
                             <tr>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">N° Matricule</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">Noms & Prénom(s)</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">Date et Lieu de Naissance</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">Photo d'identité</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">CIN</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">Classe</th>
-                                <th className="px-4 py-2 text-center font-semibold w-auto">Actions</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">N° Matricule</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">Noms & Prénom(s)</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">Date et Lieu de Naissance</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">Photo d'identité</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">CIN</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">Classe</th>
+                                <th className="px-4 py-2 text-center font-bold w-auto">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="devide-y">
                             {currentData.length > 0 ? (
                                 currentData.map((liste, idx) => (
                                     <tr key={idx}>
@@ -765,7 +909,7 @@ function AffichageEleve() {
                         {/* Boutons d'action */}
                         <div className="p-4 flex justify-center gap-3 print:hidden">
                             <button 
-                                onClick={handlePrintCarte}
+                                onClick={handleExportCarte}
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
                             >
                                 <FaPrint className="w-4 h-4" />
@@ -924,17 +1068,17 @@ function AffichageEleve() {
                                         <div className="p-4 space-y-4">
                                             <InfoRow
                                                 icon={<FaUserTie className="text-blue-500" />}
-                                                label="Nom du Père"
+                                                label="Fils"
                                                 value={selectedPersonne.inscription?.personne?.nompere}
                                             />
                                             <InfoRow
                                                 icon={<FaUserFriends className="text-pink-500" />}
-                                                label="Nom de la Mère"
+                                                label="Fille de"
                                                 value={selectedPersonne.inscription?.personne?.nommere}
                                             />
                                             <InfoRow
                                                 icon={<FaPhone className="text-green-500" />}
-                                                label="Téléphone Parent"
+                                                label="Téléphone"
                                                 value={selectedPersonne.inscription?.personne?.phoneparent}
                                             />
                                             <InfoRow
@@ -965,7 +1109,7 @@ function AffichageEleve() {
                                         <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-t-xl p-4">
                                             <div className="flex items-center gap-3 text-white">
                                                 <FaGraduationCap className="w-5 h-5" />
-                                                <h4 className="font-semibold text-lg">Inscription & Formation</h4>
+                                                <h4 className="font-semibold text-lg">Inscription & Classe</h4>
                                             </div>
                                         </div>
                                         <div className="p-4 space-y-4">
@@ -1001,10 +1145,6 @@ function AffichageEleve() {
                                                     <span className="text-sm font-medium">{selectedPersonne.niveau?.nomniveau || "Non assigné"}</span>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div>
-                                            <p><strong>Inscrit par :</strong> {eleve.secretaire_nom}</p>
                                         </div>
                                     </div>
                                 </div>

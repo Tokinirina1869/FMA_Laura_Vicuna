@@ -9,26 +9,28 @@ const ListeEleve = ({ onViewDash }) => {
     const [showInscription, setShowInscription] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(false); // trigger pour rafraîchir AffichageEleve
 
-    const [showPop, SetShowPop] = useState(false);
+    const [showReinscription, setShowReinscription] = useState(false);
     const [selectedMat, setSelectedMat] = useState('');
 
     const openReinscription = (mat) => {
         setSelectedMat(mat);
-        SetShowPop(false);
-    }
+        setShowReinscription(true);
+    };
 
     const closeReinscription = () => {
-        SetShowPop(false);
-        setSearchMat('');
-    }
+        setShowReinscription(false);
+        setSelectedMat('');
+    };
 
     const handleReinscriptionSuccess = (data) => {
         console.log('Réinscription réussie !', data);
         closeReinscription();
-    }
+        // Optionnel : rafraîchir la liste des élèves
+        setRefreshTrigger(prev => !prev);
+    };
 
     const handleRefresh = () => {
-        setRefreshTrigger(prev => !prev); // change la valeur pour déclencher le useEffect de fetch dans AffichageEleve
+        setRefreshTrigger(prev => !prev);
     };
 
     return (
@@ -50,38 +52,35 @@ const ListeEleve = ({ onViewDash }) => {
                 </button>
                 <button onClick={() => openReinscription('26/LYC/87')} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
                     <Plus className="w-4 h-4" />
-                    Reinscription
+                    Réinscription
                 </button>
-                {
-                    showPop && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <div className="bg-white rounded-lg p-4 max-w-md w-full">
-                          <ReinscriptionLycee
-                            show={showInscription}
-                            handleclose={handleClose}
+            </div>
+
+            {/* Popup de réinscription */}
+            {showReinscription && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+                    <div className="bg-white rounded-lg p-4 max-w-3xl w-full overflow-y-auto">
+                        <ReinscriptionLycee
+                            show={showReinscription}
+                            handleclose={closeReinscription}
                             initialMatricule={selectedMat}
                             onReinscriptionSuccess={handleReinscriptionSuccess}
-                          />
-                        </div>
-                      </div>
-                    )
-                }
-            </div>
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="card shadow-sm p-2 rounded-3">
                 <AffichageEleve refreshTrigger={refreshTrigger} />
             </div>
 
-
             <NouvelleInscription 
                 show={showInscription} 
                 handleClose={() => setShowInscription(false)} 
-                refreshList={handleRefresh} // déclenche le refresh
+                refreshList={handleRefresh}
             />
         </div>
     );
 };
 
 export default ListeEleve;
-
-                

@@ -11,11 +11,11 @@ import * as XLSX from 'xlsx';
 const PRIMARY_COLOR = '#1D4ED8';
 const SECONDARY_COLOR = '#059669';
 const PIE_COLORS = [
-  '#3B82F6', '#F59E0B',  '#EF4444', '#10B981',  '#8B5CF6',
-  '#F472B6' ];
+  '#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#8B5CF6', '#F472B6'
+];
 
-const sexe_Colors = ["#bf0c33ff","#143C78"];
-const minmaj_Colors = ["#061389ff","#087f0aff"];
+const sexe_Colors = ["#bf0c33ff", "#143C78"];
+const minmaj_Colors = ["#061389ff", "#087f0aff"];
 
 const url = "http://localhost:8000/api";
 
@@ -60,7 +60,7 @@ const EmptyChart = ({ message }) => (
 const DashboadFormation = ({ onViewListPro }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // États avec valeurs par défaut sécurisées
   const [total, setTotal] = useState(0);
   const [totalMusic, setTotalMusic] = useState(0);
@@ -70,9 +70,11 @@ const DashboadFormation = ({ onViewListPro }) => {
   const [totalPatisserie, setTotalPatisserie] = useState(0);
   const [topParcours, setTopParcours] = useState(null);
 
-  const [typeFormation, setTypeFormation] = useState('');
+  const [duree, setDuree] = useState('');
   const [nomFormation, setNomFormation] = useState('');
   const [anneeScolaire, setAnneeScolaire] = useState('');
+  // Nouvel état pour l'année d'étude (1ère ou 2ème année)
+  const [anneeEtude, setAnneeEtude] = useState('');
   const [apprenants, setApprenants] = useState([]);
 
   const [data, setData] = useState([]);
@@ -82,83 +84,82 @@ const DashboadFormation = ({ onViewListPro }) => {
   const [mincfp, setMinCfp] = useState([]);
 
   // -----------------------------
-// 1. Data Fetching UNIFIÉ avec gestion d'erreur robuste
-// -----------------------------
+  // 1. Data Fetching UNIFIÉ avec gestion d'erreur robuste
+  // -----------------------------
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
 
-const fetchAllData = async () => {
-  setLoading(true);
-  setError(null);
-  
-  try {
-    // SEULEMENT 2 APPELS MAINTENANT !
-    const requests = [
-      axios.get(`${url}/dashboard/data`),        // Toutes les stats en une fois
-      axios.get(`${url}/parcours/list`)          // Liste des parcours
-    ];
+    try {
+      // SEULEMENT 2 APPELS MAINTENANT !
+      const requests = [
+        axios.get(`${url}/dashboard/data`),        // Toutes les stats en une fois
+        axios.get(`${url}/parcours/list`)          // Liste des parcours
+      ];
 
-    const results = await Promise.allSettled(requests);
-    const getData = (result, defaultValue = null) => 
-      result.status === 'fulfilled' ? result.value.data : defaultValue;
+      const results = await Promise.allSettled(requests);
+      const getData = (result, defaultValue = null) =>
+        result.status === 'fulfilled' ? result.value.data : defaultValue;
 
-    // Données du dashboard - CORRECTION ICI
-    const dashboardResult = getData(results[0], {});
-    const dashboardData = dashboardResult.data || {}; // Extraire le data du response
-    
-    // Liste des parcours - CORRECTION ICI  
-    const parcoursResult = getData(results[1], {});
-    const parcoursData = parcoursResult.data || []; // Extraire le data du response
+      // Données du dashboard
+      const dashboardResult = getData(results[0], {});
+      const dashboardData = dashboardResult.data || {};
 
-    // Extraction et transformation des données avec fallbacks sécurisés
-    const transformedTrimestre = (dashboardData.trimestre_data || []).map(item => ({   
-      annee: item.annee,
-      trimestre: item.trimestre,
-      total: item.total
-    }));
+      // Liste des parcours
+      const parcoursResult = getData(results[1], {});
+      const parcoursData = parcoursResult.data || [];
 
-    const formationCounts = dashboardData.formation_counts || {};
-    const effectifsFormation = dashboardData.effectifs_formation || [];
-    const repartitionSexe = dashboardData.repartition_sexe || [];
-    const repartitionAge = dashboardData.repartition_age || [];
-    const topFormation = dashboardData.top_formation || null;
+      // Extraction et transformation des données avec fallbacks sécurisés
+      const transformedTrimestre = (dashboardData.trimestre_data || []).map(item => ({
+        annee: item.annee,
+        trimestre: item.trimestre,
+        total: item.total
+      }));
 
-    // Mise à jour de tous les states
-    setData(transformedTrimestre);
-    setTotal(dashboardData.total_inscriptions || 0);
-    
-    // Données des formations
-    setTotalMusic(formationCounts.musique || 0);
-    setTotalInfo(formationCounts.informatique || 0);
-    setTotalCoupe(formationCounts.coupe_couture || 0);
-    setTotalLangues(formationCounts.langues || 0);
-    setTotalPatisserie(formationCounts.patisserie || 0);
-    
-    setTopParcours(topFormation);
-    setParcours(parcoursData);
-    setStats({ effectifs: effectifsFormation });
-    setCfp({ sexes: repartitionSexe });
-    setMinCfp(repartitionAge);
+      const formationCounts = dashboardData.formation_counts || {};
+      const effectifsFormation = dashboardData.effectifs_formation || [];
+      const repartitionSexe = dashboardData.repartition_sexe || [];
+      const repartitionAge = dashboardData.repartition_age || [];
+      const topFormation = dashboardData.top_formation || null;
 
-    // Debug log pour vérifier les données
-    console.log('Données chargées:', {
-      total: dashboardData.total_inscriptions,
-      formations: formationCounts,
-      topFormation: topFormation,
-      parcoursCount: parcoursData.length
-    });
+      // Mise à jour de tous les states
+      setData(transformedTrimestre);
+      setTotal(dashboardData.total_inscriptions || 0);
 
-  } catch (err) {
-    console.error("Erreur générale lors du chargement:", err);
-    setError("Erreur lors du chargement des données. Veuillez rafraîchir la page.");
-  } finally {
-    setLoading(false);
-  }
-};
+      // Données des formations
+      setTotalMusic(formationCounts.musique || 0);
+      setTotalInfo(formationCounts.informatique || 0);
+      setTotalCoupe(formationCounts.coupe_couture || 0);
+      setTotalLangues(formationCounts.langues || 0);
+      setTotalPatisserie(formationCounts.patisserie || 0);
+
+      setTopParcours(topFormation);
+      setParcours(parcoursData);
+      setStats({ effectifs: effectifsFormation });
+      setCfp({ sexes: repartitionSexe });
+      setMinCfp(repartitionAge);
+
+      console.log('Données chargées:', {
+        total: dashboardData.total_inscriptions,
+        formations: formationCounts,
+        topFormation: topFormation,
+        parcoursCount: parcoursData.length
+      });
+
+    } catch (err) {
+      console.error("Erreur générale lors du chargement:", err);
+      setError("Erreur lors du chargement des données. Veuillez rafraîchir la page.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // -----------------------------
   // 2. useEffect UNIQUE
   // -----------------------------
   useEffect(() => {
     fetchAllData();
-  }, []); 
+  }, []);
 
   // -----------------------------
   // 3. Utility Functions
@@ -176,10 +177,13 @@ const fetchAllData = async () => {
   // 4. Handlers avec gestion d'erreur améliorée
   // -----------------------------
   const handleListerParOrdre = async () => {
-    if (!typeFormation || !nomFormation || !anneeScolaire) {
+    // Validation : pour une formation de 2 ans, l'année d'étude est obligatoire
+    if (!duree || !nomFormation || !anneeScolaire || (duree === "2 ans" && !anneeEtude)) {
       return Swal.fire({
         icon: 'warning',
-        text: "Veuillez sélectionner tous les filtres !",
+        text: duree === "2 ans"
+          ? "Veuillez sélectionner tous les filtres (y compris l'année d'étude : 1ère ou 2ème année) !"
+          : "Veuillez sélectionner tous les filtres !",
         showConfirmButton: true,
         background: '#1e1e2f',
         color: 'white',
@@ -187,13 +191,17 @@ const fetchAllData = async () => {
     }
 
     try {
-      const response = await axios.get(`${url}/inscriptions/filter`, {
-        params: { 
-          type_formation: typeFormation, 
-          nom_formation: nomFormation, 
-          annee_scolaire: anneeScolaire 
-        }
-      });
+      const params = {
+        duree,
+        nom_formation: nomFormation,
+        annee_scolaire: anneeScolaire,
+      };
+      // Ajouter annee_etude seulement si nécessaire
+      if (duree === "2 ans") {
+        params.annee_etude = anneeEtude;
+      }
+
+      const response = await axios.get(`${url}/inscriptions/filter`, { params });
 
       const data = response.data.Data || [];
       setApprenants(data);
@@ -218,7 +226,7 @@ const fetchAllData = async () => {
 
     } catch (error) {
       console.error(error);
-      
+
       if (error.response?.status === 429) {
         Swal.fire({
           icon: 'error',
@@ -239,9 +247,9 @@ const fetchAllData = async () => {
     }
   };
 
-  // --- NOUVELLE FONCTION D'EXPORT WORD ---
+  // --- FONCTION D'EXPORT WORD (corrigée sans dépendance externe) ---
   async function handleExportWord() {
-    if (!typeFormation || !nomFormation || !anneeScolaire || !apprenants || apprenants.length === 0) {
+    if (!duree || !nomFormation || !anneeScolaire || !apprenants || apprenants.length === 0) {
       return Swal.fire({
         icon: "warning",
         text: "Veuillez filtrer et afficher des apprenants avant d'exporter !",
@@ -342,6 +350,7 @@ const fetchAllData = async () => {
     const blob = new Blob([htmlContent], { type: 'application/msword' });
     const fileName = `Liste_${nomFormation.replace(/\s/g, '')}_${anneeScolaire}.doc`;
 
+    // Utilisation de l'API File System Access si disponible, sinon fallback
     try {
       if (window.showSaveFilePicker) {
         const fileHandle = await window.showSaveFilePicker({
@@ -365,10 +374,18 @@ const fetchAllData = async () => {
           color: "white",
         });
       } else {
-        saveAs(blob, fileName);
+        // Fallback : créer un lien de téléchargement
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
         Swal.fire({
           icon: "info",
-          text: "Votre navigateur ne permet pas le choix du dossier. Le fichier a été téléchargé automatiquement.",
+          text: "Le fichier Word a été téléchargé automatiquement.",
           background: "#1e1e2f",
           color: "white",
         });
@@ -385,8 +402,9 @@ const fetchAllData = async () => {
       }
     }
   }
+
   async function handleExportExcel() {
-    if (!typeFormation || !nomFormation || !anneeScolaire || !apprenants || apprenants.length === 0) {
+    if (!duree || !nomFormation || !anneeScolaire || !apprenants || apprenants.length === 0) {
       return Swal.fire({
         icon: "warning",
         text: "Sélectionnez et listez les apprenants avant d'exporter !",
@@ -451,13 +469,14 @@ const fetchAllData = async () => {
           }
         }
       } else {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        Swal.fire({ icon: "info", text: "Le fichier a été téléchargé automatiquement.", background: "#1e1e2f", color: "white" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        Swal.fire({ icon: "info", text: "Le fichier Excel a été téléchargé automatiquement.", background: "#1e1e2f", color: "white" });
       }
     } catch (err) {
       console.error("Erreur export Excel :", err);
@@ -478,13 +497,13 @@ const fetchAllData = async () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Données partielles</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="flex gap-4 justify-center">
-            <button 
+            <button
               onClick={fetchAllData}
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300"
             >
               Réessayer
             </button>
-            <button 
+            <button
               onClick={() => setError(null)}
               className="bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition duration-300"
             >
@@ -505,7 +524,7 @@ const fetchAllData = async () => {
 
   const DashboardContent = () => (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
-      
+
       {/* Header and Top Info */}
       <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4 p-4 rounded-xl shadow-md">
         <div className="flex items-center gap-3">
@@ -513,7 +532,7 @@ const fetchAllData = async () => {
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Tableau de bord de Formation</h1>
         </div>
         <p className="text-xl italic">« Centre de Formation Professionnelle Laura Vicuna Anjarasoa (CFP) »</p>
-        <button 
+        <button
           className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.02] active:scale-95"
           onClick={onViewListPro}
         >
@@ -524,8 +543,8 @@ const fetchAllData = async () => {
       {/* Top Course Info */}
       <div className="mb-8 p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded-xl shadow-md">
         <p className="flex items-center font-bold text-gray-800">
-          <FaStar className="w-5 h-5 mr-3 text-yellow-500" /> 
-            Formation la plus suivie : 
+          <FaStar className="w-5 h-5 mr-3 text-yellow-500" />
+          Formation la plus suivie :
           <span className="mx-2 text-indigo-700 font-extrabold">
             {topParcours ? topParcours.nomformation : "Aucune donnée"}
           </span>
@@ -553,7 +572,7 @@ const fetchAllData = async () => {
 
       {/* Filter and Table Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-        
+
         {/* Filter Card (Col 1-4) */}
         <div className="lg:col-span-4">
           <div className="rounded-2xl shadow-xl p-6 h-full transition duration-300 hover:shadow-2xl">
@@ -561,27 +580,31 @@ const fetchAllData = async () => {
               <FaSearch className="inline mr-2 text-indigo-600" /> Filtre des apprenants
             </h2>
             <div className="space-y-4">
-              
-              {/* Type de Formation */}
+
+              {/* Durée de la Formation */}
               <div>
-                <label className="block text-sm font-medium mb-1">Type de Formation</label>
-                <select 
+                <label className="block text-sm font-medium mb-1">Durée de la Formation</label>
+                <select
                   className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                  value={typeFormation} 
-                  onChange={(e) => setTypeFormation(e.target.value)}
+                  value={duree}
+                  onChange={(e) => {
+                    setDuree(e.target.value);
+                    // Réinitialiser l'année d'étude quand on change la durée
+                    setAnneeEtude('');
+                  }}
                 >
-                  <option value="">--- Type de la Formation ---</option>
-                  <option value="Long Terme">Long Terme</option>
-                  <option value="Court Terme">Court Terme</option>
+                  <option value="">--- Durée de la Formation ---</option>
+                  <option value="3 mois">3 mois</option>
+                  <option value="2 ans">2 ans</option>
                 </select>
               </div>
 
               {/* Nom Formation */}
               <div>
                 <label className="block text-sm font-medium mb-1">Nom Formation</label>
-                <select 
+                <select
                   className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                  value={nomFormation} 
+                  value={nomFormation}
                   onChange={(e) => setNomFormation(e.target.value)}
                 >
                   <option value="">--- Nom de la Formation ---</option>
@@ -594,9 +617,9 @@ const fetchAllData = async () => {
               {/* Année Scolaire */}
               <div>
                 <label className="block text-sm font-medium mb-1">Année Scolaire</label>
-                <select 
+                <select
                   className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                  value={anneeScolaire} 
+                  value={anneeScolaire}
                   onChange={(e) => setAnneeScolaire(e.target.value)}
                 >
                   <option value="">--- Année Scolaire ---</option>
@@ -605,25 +628,41 @@ const fetchAllData = async () => {
                   ))}
                 </select>
               </div>
+
+              {/* Année d'étude (visible seulement pour les formations de 2 ans) */}
+              {duree === "2 ans" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Année d'étude</label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+                    value={anneeEtude}
+                    onChange={(e) => setAnneeEtude(e.target.value)}
+                  >
+                    <option value="">--- Sélectionnez l'année ---</option>
+                    <option value="1ere année">1ère année</option>
+                    <option value="2eme année">2ème année</option>
+                  </select>
+                </div>
+              )}
             </div>
-            
+
             <div className="mt-8 space-y-3">
-              <button 
+              <button
                 className="flex items-center justify-center w-full px-4 py-2 text-white font-bold rounded-lg bg-blue-600 hover:bg-blue-700 shadow-lg transition duration-300 transform hover:scale-[1.01]"
-                style={{ backgroundColor: '#10B981', boxShadow: '0 4px 6px rgba(29, 78, 216, 0.4)' }} 
-                onClick={handleListerParOrdre} 
+                style={{ backgroundColor: '#10B981', boxShadow: '0 4px 6px rgba(29, 78, 216, 0.4)' }}
+                onClick={handleListerParOrdre}
               >
                 <FaSearch className="mr-2" /> Afficher la liste
               </button>
 
-              <button 
+              <button
                 className="flex items-center justify-center w-full px-4 py-2 text-white font-bold rounded-lg bg-blue-600 hover:bg-blue-700 shadow-lg transition duration-300 transform hover:scale-[1.01]"
                 onClick={handleExportWord}
               >
                 <FaFileWord className="mr-2" /> Exporter en Word
               </button>
 
-              <button 
+              <button
                 className="flex items-center justify-center w-full px-4 py-2 text-white font-bold rounded-lg bg-green-600 hover:bg-green-700 shadow-lg transition duration-300 transform hover:scale-[1.01]"
                 onClick={handleExportExcel}
               >
@@ -652,7 +691,7 @@ const fetchAllData = async () => {
                 </thead>
 
                 <tbody className="divide-y divide-gray-100">
-                  { apprenants.length > 0 ? apprenants.map((liste, idx) => (
+                  {apprenants.length > 0 ? apprenants.map((liste, idx) => (
                     <tr key={idx}>
                       <td className="px-4 py-2 text-center text-sm">{liste.matricule}</td>
                       <td className="px-4 py-2 text-center text-sm">
@@ -662,7 +701,7 @@ const fetchAllData = async () => {
                       <td className="px-4 py-2 text-center text-sm">{liste.sexe}</td>
                       <td className="px-4 py-2 text-center text-sm">{liste.adresse}</td>
                     </tr>
-                  )): (
+                  )) : (
                     <tr className='h-32'>
                       <td colSpan={5} className="text-center p-5 italic">
                         Utilisez les filtres pour rechercher les apprenants.
@@ -678,7 +717,7 @@ const fetchAllData = async () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  
+
         {/* Chart 1: Répartition par formation */}
         <div className="rounded-2xl shadow-xl p-6 transition duration-300 hover:shadow-2xl">
           <h2 className="text-xl font-bold mb-4 border-b pb-2 text-center">
@@ -688,19 +727,19 @@ const fetchAllData = async () => {
             {stats.effectifs && stats.effectifs.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={stats.effectifs} dataKey="value" nameKey="name" cx="50%" cy="50%" 
+                  <Pie data={stats.effectifs} dataKey="value" nameKey="name" cx="50%" cy="50%"
                     outerRadius={150} innerRadius={60} paddingAngle={3} labelLine={false}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
                   >
                     {stats.effectifs.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]}/>
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} élèves`, "Effectif"]} 
+                  <Tooltip
+                    formatter={(value) => [`${value} élèves`, "Effectif"]}
                     contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 8 }}
                   />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }}/>
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -718,19 +757,19 @@ const fetchAllData = async () => {
             {cfp.sexes && cfp.sexes.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={cfp.sexes} dataKey="value" nameKey="name" cx="50%" cy="50%" 
-                    outerRadius={150} innerRadius={60} paddingAngle={3} labelLine={false} 
+                  <Pie data={cfp.sexes} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                    outerRadius={150} innerRadius={60} paddingAngle={3} labelLine={false}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
                   >
                     {cfp.sexes.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={sexe_Colors[index % sexe_Colors.length]}/>
+                      <Cell key={`cell-${index}`} fill={sexe_Colors[index % sexe_Colors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} élèves`, "Effectif"]} 
+                  <Tooltip
+                    formatter={(value) => [`${value} élèves`, "Effectif"]}
                     contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 8 }}
                   />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }}/>
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -748,27 +787,27 @@ const fetchAllData = async () => {
             {mincfp && mincfp.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie 
-                    data={mincfp} 
-                    dataKey="value" 
-                    nameKey="name" 
-                    cx="50%" 
-                    cy="50%" 
-                    outerRadius={150} 
-                    innerRadius={60} 
-                    paddingAngle={3} 
-                    labelLine={false} 
+                  <Pie
+                    data={mincfp}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={150}
+                    innerRadius={60}
+                    paddingAngle={3}
+                    labelLine={false}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
                   >
                     {mincfp.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={minmaj_Colors[index % minmaj_Colors.length]}/>
+                      <Cell key={`cell-${index}`} fill={minmaj_Colors[index % minmaj_Colors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} élèves`, "Effectif"]} 
+                  <Tooltip
+                    formatter={(value) => [`${value} élèves`, "Effectif"]}
                     contentStyle={{ border: '1px solid #e5e7eb', borderRadius: 8 }}
                   />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }}/>
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -785,19 +824,19 @@ const fetchAllData = async () => {
           <div className="h-[450px]">
             {data && data.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} margin={{ top: 30, right: 20, left: 10, bottom: 20}} barCategoryGap='15%'>
+                <BarChart data={data} margin={{ top: 30, right: 20, left: 10, bottom: 20 }} barCategoryGap='15%'>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                   <XAxis dataKey="trimestre" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
                   <Tooltip content={<CustomBarTooltip />} />
-                  <Bar 
-                    dataKey='total' 
-                    fill={PRIMARY_COLOR} 
-                    name="Nombre d'inscrits" 
-                    maxBarSize={50} 
+                  <Bar
+                    dataKey='total'
+                    fill={PRIMARY_COLOR}
+                    name="Nombre d'inscrits"
+                    maxBarSize={50}
                     radius={[8, 8, 0, 0]}
-                    animationDuration={1200} 
-                    label={{ position: 'top', fill: PRIMARY_COLOR, fontSize: 13, fontWeight: 'bold' }} 
+                    animationDuration={1200}
+                    label={{ position: 'top', fill: PRIMARY_COLOR, fontSize: 13, fontWeight: 'bold' }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -812,7 +851,7 @@ const fetchAllData = async () => {
 
   return (
     <div className="font-sans">
-      <DashboardContent /> 
+      <DashboardContent />
     </div>
   );
 };

@@ -6,13 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::table('parcours', function (Blueprint $table) {
             $table->string('duree')->nullable();
+            
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('parcours', function (Blueprint $table) {

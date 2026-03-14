@@ -14,12 +14,10 @@ import ProfileComponent from './components/modals/ProfileComponent';
 import ListeFormation from './components/liste/ListeFormation';
 import ListeEleve from './components/liste/ListeEleve';
 import NouvelleInscription from './components/modals/NouvelleInscription';
-// import DashboadFormation from './components/liste/Dash_Formation';
-// import DashboardPage from './components/DashboadPage';
-// import DashboardEleve from './components/liste/Dash_Eleve';
 import { ThemeProvider } from './components/ThemeContext';
 import ProtectedRoute from './components/Users/ProtectedRoute';
 import { AuthProvider } from './components/Users/AuthContext';
+import './components/Users/axiosConfig';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode> 
@@ -27,8 +25,8 @@ createRoot(document.getElementById('root')).render(
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            <Route path='/' element={<ReinscriptionLycee />} />
-            {/* <Route path='/' element={<Inscription />} /> */}
+            {/* <Route path='/' element={<ReinscriptionLycee />} /> */}
+            <Route path='/' element={<Inscription />} />
             <Route path='/login' element={<Login />} />
             <Route path='/register' element={<Register />} />
 
@@ -38,21 +36,6 @@ createRoot(document.getElementById('root')).render(
                 <ProfileComponent />
               </ProtectedRoute>
             } />
-            {/* <Route path='/dash_global' element={
-              <ProtectedRoute> 
-                <DashboardPage />
-              </ProtectedRoute>
-            }/>
-            <Route path='/dash_eleve' element={
-              <ProtectedRoute> 
-                <DashboardEleve />
-              </ProtectedRoute>
-            }/>
-            <Route path='/dash_formation' element={
-              <ProtectedRoute> 
-                <DashboadFormation />
-              </ProtectedRoute>
-            }/> */}
 
             <Route path='/page' element={
               <ProtectedRoute>

@@ -9,12 +9,13 @@ import ProfileComponent from './modals/ProfileComponent';
 import DashboadEleve from './liste/Dash_Eleve';
 import DashboadFormation from './liste/Dash_Formation';
 import SchoolDashboard from './liste/AutreDash';
+import Chat from './Message/Chat';
 import Footer from './Footer';
 import { AuthContext } from './Users/AuthContext';
 
 function Page() {
   const { user, logout } = useContext(AuthContext); // Récupération de l'utilisateur et de la fonction logout
-  const [currentPage, setCurrentPage] = useState('dashboard'); // Valeur par défaut en attendant le chargement
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showProfilModal, setShowProfilModal] = useState(false);
 
@@ -75,13 +76,14 @@ function Page() {
 
   // Pages disponibles
   const pages = {
-    dashboard: <DashboardPage autre={() => setCurrentPage('autre')} />,
-    autre: <SchoolDashboard retourDash={() => setCurrentPage('dashboard')} />,
-    eleve: <DashboadEleve onViewList={() => setCurrentPage('listeEleve')} />,
-    formation: <DashboadFormation onViewListPro={() => setCurrentPage('listeFormation')} />,
-    listeEleve: <ListeEleve onViewDash={() => setCurrentPage('eleve')} />,
+    dashboard:      <DashboardPage autre={() => setCurrentPage('autre')} />,
+    autre:          <SchoolDashboard retourDash={() => setCurrentPage('dashboard')} />,
+    eleve:          <DashboadEleve onViewList={() => setCurrentPage('listeEleve')} />,
+    formation:      <DashboadFormation onViewListPro={() => setCurrentPage('listeFormation')} />,
+    listeEleve:     <ListeEleve onViewDash={() => setCurrentPage('eleve')} />,
     listeFormation: <ListeFormation onViewDashPro={() => setCurrentPage('formation')} />,
-    paiement: <PaymentPage />,
+    paiement:       <PaymentPage />,
+    chat:           <Chat/>,
   };
 
   return (

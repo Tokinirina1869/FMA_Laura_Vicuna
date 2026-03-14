@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Modal, Button, Form, Row, Col } from "react-bootstrap";
 import axios from "axios";
-import { FaGraduationCap, FaPlus, FaTrash, FaUserAlt, FaExclamationTriangle,FaTimes, FaUserPlus, FaCheck } from "react-icons/fa";
-import { User, UserPlus, Users, Mail } from "lucide-react";
+import { FaGraduationCap, FaPlus, FaTrash, FaUserAlt, FaTimes, FaUserPlus, FaCheck } from "react-icons/fa";
+import { User, UserPlus, Users } from "lucide-react";
 import Swal from "sweetalert2";
 
 const getInitialFormState = (today) => ({
@@ -22,11 +22,11 @@ const getInitialFormState = (today) => ({
     adresstuteur: "",
     phoneparent: "",
     phonetuteur: "",
-    email: "", // Ajout du champ email manquant
     dateinscrit: today,
     anneesco: "",
     duree: "",
     type_formation: "Court Terme",
+    annee_etude: "", // Nouveau champ pour l'année d'étude (1ère/2ème)
     photo: null,
     profileImage: "https://placehold.co/128x128/FFFFFF/000000?text=Photo",
     uploading: false,
@@ -35,8 +35,7 @@ const getInitialFormState = (today) => ({
 const NouvellePersonne = ({ show, handleClose, refreshList }) => {
   const today = new Date().toISOString().split("T")[0];
 
-  // Utilisation de la fonction d'état initial
-  const [form, setForm] = useState(getInitialFormState(today)); 
+  const [form, setForm] = useState(getInitialFormState(today));
   const [parcoursForm, setParcoursForm] = useState([]);
   const [errors, setErrors] = useState({});
   const [parcoursOption, setParcoursOption] = useState([]);
@@ -48,7 +47,7 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       if (!dateNaiss) return false;
       const today = new Date();
       const birthDate = new Date(dateNaiss);
-      
+
       if (isNaN(birthDate)) return false;
 
       let age = today.getFullYear() - birthDate.getFullYear();
@@ -59,20 +58,18 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       }
       return age >= 18;
   };
-  
-  // Cette variable est maintenant déclarée APRÈS l'état 'form'
+
   const estMajeur = isMajeur(form.naiss);
 
-  useEffect(() =>{
+  useEffect(() => {
     const fetchParcours = async () => {
-      try{
+      try {
         const response = await axios.get('http://localhost:8000/api/parcours');
         setParcoursOption(response.data);
-      }
-      catch(err){
+      } catch (err) {
         console.error("Erreur lors du chargement des parcours ", err);
       }
-    }
+    };
     fetchParcours();
     setParcoursForm([]);
   }, [form.duree]);
@@ -83,13 +80,6 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       ...prev,
       [fieldName]: true
     }));
-  };
-
-  // Validation d'email
-  const validateEmail = (email) => {
-    if (!email) return "";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email) ? "" : "Email invalide";
   };
 
   // Générer années scolaires
@@ -104,9 +94,9 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
 
   const parcoursMap = useMemo(() => {
       return parcoursOption.reduce((acc, p) => {
-          acc[p.nomformation] = p.code_formation 
+          acc[p.nomformation] = p.code_formation
             ? p.code_formation.substring(0, 3).toUpperCase()
-            : null; 
+            : null;
           return acc;
       }, {});
   }, [parcoursOption]);
@@ -121,19 +111,9 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       [name] : value.trim() === "" ? "Ce champ est requis " : ""
     }));
 
-    // Validation email
-    if (name === "email") {
-      const emailError = validateEmail(value);
-      setFormErrors(prev => ({
-        ...prev,
-        email: emailError
-      }));
-    }
-
     if (name === "cin" && !/^[0-9]{12}$/.test(value)) {
       setErrors(prev => ({ ...prev, cin: "CIN invalide : 12 chiffres" }));
-    }
-    else if (name === "cin") {
+    } else if (name === "cin") {
       setErrors(prev => ({ ...prev, cin: "" }));
     }
 
@@ -144,21 +124,11 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
     }
   };
 
-  // --- Fonction de Validation Complète ---
-  const handleParcoursChange = (index, field, value) => {
-    setParcoursForm(prev => {
-      const updated = [...prev];
-      updated[index][field] = value;
-      return updated;
-    });
-  };
-
   const parcoursFiltrés = useMemo(() => {
     return parcoursOption.filter(p => 
-      p.duree === form.duree // Assure-toi que ta table parcours a un champ type_formation
+      p.duree === form.duree
     );
   }, [parcoursOption, form.duree]);
-  
 
   const addNewParcours = () => {
     setParcoursForm(prev => [...prev, { nomformation: "", datedebut: today }]);
@@ -177,7 +147,6 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
     }));
   };
 
-  
   // Soumission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -213,17 +182,17 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       }
     }
 
-    // 3️⃣ Validation des numéros de téléphone
+    // 3️⃣ Validation conditionnelle : année d'étude si durée = 2 ans
+    if (form.duree === "2 ans" && !form.annee_etude) {
+      newErrors.annee_etude = "Veuillez sélectionner l'année d'étude (1ère ou 2ème)";
+    }
+
+    // 4️⃣ Validation des numéros de téléphone
     const checkPhone = (v) => v && !/^[0-9]{10}$/.test(v.replace(/\s/g, ""));
     if (checkPhone(form.phoneparent))
       newErrors.phoneparent = "Numéro invalide : 10 chiffres requis.";
     if (checkPhone(form.phonetuteur))
       newErrors.phonetuteur = "Numéro invalide : 10 chiffres requis.";
-
-    // 4️⃣ Validation email
-    if (form.email && formErrors.email) {
-      newErrors.email = formErrors.email;
-    }
 
     // 5️⃣ Validation des parcours
     if (!parcoursForm.length) {
@@ -304,16 +273,25 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
       setTouchedFields({});
       handleClose();
       refreshList && refreshList();
-    } catch (err) {
+    } 
+    catch (err) {
       console.error("Erreur API:", err);
-      Swal.fire({
-        icon: "error",
-        text:
-          "Erreur lors de l'inscription: " +
-          (err.response?.data?.message || err.message),
-        background: "#1e1e2f",
-        color: "white",
-      });
+      if (err.response?.status === 409) {
+        Swal.fire({
+          icon: "warning",
+          title: "Inscription déjà existante",
+          text: "Cet élève est déjà inscrit pour cette année scolaire.",
+          background: "#1e1e2f",
+          color: "white",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          text: "Erreur lors de l'inscription: " + (err.response?.data?.message || err.message),
+          background: "#1e1e2f",
+          color: "white",
+        });
+      }
     }
   };
 
@@ -321,11 +299,9 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validation du fichier
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
     const maxSize = 5 * 1024 * 1024; // 5MB
 
-    // Vérification du type
     if (!validTypes.includes(file.type)) {
       Swal.fire({
         icon: 'error',
@@ -335,11 +311,10 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
         color: 'white',
         confirmButtonColor: '#3085d6'
       });
-      e.target.value = ''; // Réinitialiser l'input file
+      e.target.value = '';
       return;
     }
 
-    // Vérification de la taille
     if (file.size > maxSize) {
       Swal.fire({
         icon: 'error',
@@ -349,17 +324,15 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
         color: 'white',
         confirmButtonColor: '#3085d6'
       });
-      e.target.value = ''; // Réinitialiser l'input file
+      e.target.value = '';
       return;
     }
 
-    // Vérification des dimensions (optionnel)
     const img = new Image();
     img.onload = function() {
       const width = this.width;
       const height = this.height;
-      
-      // Recommandation de dimensions (pas une erreur bloquante)
+
       if (width < 100 || height < 100) {
         Swal.fire({
           icon: 'warning',
@@ -373,10 +346,9 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
           confirmButtonText: 'Utiliser quand même'
         }).then((result) => {
           if (!result.isConfirmed) {
-            e.target.value = ''; // Réinitialiser si l'utilisateur veut changer
+            e.target.value = '';
             return;
           }
-          // Continuer avec l'image même si petite
           finalizeImageUpload(file);
         });
       } else {
@@ -400,53 +372,51 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
   };
 
   const finalizeImageUpload = (file) => {
-    // Mettre à jour l'état avec le fichier
     setForm(prev => ({ ...prev, photo: file }));
-    
-    // Créer l'aperçu
+
     const reader = new FileReader();
     reader.onloadend = () => {
-      setForm(prev => ({ 
-        ...prev, 
+      setForm(prev => ({
+        ...prev,
         profileImage: reader.result,
-        uploading: false 
+        uploading: false
       }));
     };
-    
-    // Simuler un chargement (optionnel)
+
     setForm(prev => ({ ...prev, uploading: true }));
     reader.readAsDataURL(file);
   };
 
   return (
-    <Modal 
-      show={show} 
-      onHide={handleClose} 
-      size="xl" 
+    <Modal
+      show={show}
+      onHide={handleClose}
+      size="xl"
       centered
       style={{ zIndex: 9999 }}
       backdrop="static"
     >
-    <div className="flex justify-between items-center p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-      <div className="flex items-center gap-3">
+      <div className="flex justify-between items-center p-6 border-b border-gray-200/50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        <div className="flex items-center gap-3">
           <FaUserPlus className="w-6 h-6" />
           <div>
-              <h3 className="text-lg font-bold text-center">Nouvelle inscription Professionnelle</h3>
+            <h3 className="text-lg font-bold text-center">Nouvelle inscription Professionnelle</h3>
           </div>
-      </div>
-      <button onClick={handleClose} className="text-white hover:text-gray-200 text-2xl transition">
+        </div>
+        <button onClick={handleClose} className="text-white hover:text-gray-200 text-2xl transition">
           <FaTimes className="w-6 h-6" />
-      </button>
-    </div>
+        </button>
+      </div>
 
       <Modal.Body style={{ zIndex: 10000, position: 'relative' }}>
         <Form onSubmit={handleSubmit} className="space-y-8">
 
+          {/* Photo de profil */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative">
-              <img 
-                src={form.profileImage} 
-                alt="Profil" 
+              <img
+                src={form.profileImage}
+                alt="Profil"
                 className="rounded-full border-4 border-blue-500 w-32 h-32 object-cover shadow-lg"
               />
               <div className="absolute -bottom-2 -right-2">
@@ -455,16 +425,16 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <Form.Control 
-                    type="file" 
-                    hidden 
-                    accept="image/jpeg,image/jpg,image/png,image/gif" 
-                    onChange={handleImageUpload} 
+                  <Form.Control
+                    type="file"
+                    hidden
+                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                    onChange={handleImageUpload}
                   />
                 </Form.Label>
               </div>
             </div>
-            
+
             <div className="mt-4 text-center">
               <p className="text-sm text-gray-600 mb-2">
                 <strong>Formats acceptés :</strong> JPEG, JPG, PNG, GIF
@@ -473,8 +443,7 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
                 <strong>Taille max :</strong> 5MB • <strong>Recommandé :</strong> 128x128px
               </p>
             </div>
-    
-            {/* Indicateur de chargement */}
+
             {form.uploading && (
               <div className="mt-2 flex items-center text-blue-500">
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
@@ -484,8 +453,7 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
                 <span className="text-sm">Téléchargement...</span>
               </div>
             )}
-    
-            {/* Aperçu du fichier sélectionné */}
+
             {form.photo && (
               <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg d-flex justify-content-between items-center">
                 <p className="text-sm text-green-700 flex items-center">
@@ -511,14 +479,14 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
               <Col lg={4}><Form.Group className="mb-2" ><Form.Label>Lieu de naissance</Form.Label><Form.Control type="text" name="lieunaiss" value={form.lieunaiss} onChange={handleChange} /></Form.Group></Col>
               <Col lg={4}><Form.Group className="mb-2"><Form.Label>Sexe *</Form.Label><Form.Select name="sexe" value={form.sexe} onChange={handleChange} isInvalid={!!errors.sexe}><option value="">-- Choisir --</option><option>Masculin</option><option>Feminin</option></Form.Select><Form.Control.Feedback type="invalid">{errors.sexe}</Form.Control.Feedback></Form.Group></Col>
               <Col lg={4}><Form.Group className="mb-2"><Form.Label>Adresse Actuelle</Form.Label><Form.Control name="adresse" value={form.adresse} onChange={handleChange} /></Form.Group></Col>
-              
+
               <Col lg={4}>
                   <Form.Group className="mb-2">
                       <Form.Label><b>CIN</b> (12 Chiffres) {estMajeur ? "" : "(Mineur)"}</Form.Label>
-                      <Form.Control 
-                          name="cin" 
-                          value={form.cin} 
-                          onChange={handleChange} 
+                      <Form.Control
+                          name="cin"
+                          value={form.cin}
+                          onChange={handleChange}
                           isInvalid={!!errors.cin}
                           disabled={!estMajeur}
                       />
@@ -529,12 +497,12 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
               <Col lg={4}>
                   <Form.Group className="mb-2">
                       <Form.Label>Délivrée le {form.cin && <span className="text-danger">*</span>}</Form.Label>
-                      <Form.Control 
-                          type="date"  
-                          name="datedel" 
-                          value={form.datedel} 
-                          onChange={handleChange} 
-                          isInvalid={!!errors.datedel} 
+                      <Form.Control
+                          type="date"
+                          name="datedel"
+                          value={form.datedel}
+                          onChange={handleChange}
+                          isInvalid={!!errors.datedel}
                           max={today}
                           disabled={!estMajeur || !form.cin}
                       />
@@ -545,11 +513,11 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
               <Col lg={4}>
                   <Form.Group className="mb-2">
                       <Form.Label>à {form.cin && <span className="text-danger">*</span>}</Form.Label>
-                      <Form.Control 
-                          type="text" 
-                          name="lieucin" 
-                          value={form.lieucin} 
-                          onChange={handleChange} 
+                      <Form.Control
+                          type="text"
+                          name="lieucin"
+                          value={form.lieucin}
+                          onChange={handleChange}
                           isInvalid={!!errors.lieucin}
                           disabled={!estMajeur || !form.cin}
                       />
@@ -559,6 +527,7 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
             </Row>
           </div>
 
+          {/* INFORMATIONS PARENTALES */}
           <div className="p-6 sm:p-8 rounded-xl shadow-2xl ring-1 ring-gray-200">
             <div className="flex items-center text-indigo-600 mb-6 border-b pb-4 border-indigo-100">
               <Users className="w-6 h-6 mr-3" />
@@ -569,40 +538,10 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Nom et Prénoms du mère</Form.Label><Form.Control name="nommere" value={form.nommere} onChange={handleChange}/></Form.Group></Col>
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Adresse actuelle Parents</Form.Label><Form.Control name="adressparent" value={form.adressparent} onChange={handleChange}/></Form.Group></Col>
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Numéro de téléphone du Parent</Form.Label><Form.Control name="phoneparent" value={form.phoneparent} onChange={handleChange}/>{errors.phoneparent && <small className="text-danger">{errors.phoneparent}</small>}</Form.Group></Col>
-               <Col lg={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-semibold">Email</Form.Label>
-                    <div className="position-relative">
-                      <Mail size={16} className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
-                      <Form.Control
-                        type="email"
-                        name="email"
-                        value={form.email}
-                        onChange={handleChange}
-                        onBlur={() => handleFieldBlur("email")}
-                        className="ps-5"
-                        isInvalid={touchedFields.email && formErrors.email}
-                        isValid={touchedFields.email && !formErrors.email && form.email}
-                      />
-                    </div>
-                    {touchedFields.email && formErrors.email && (
-                      <div className="d-flex align-items-center mt-1">
-                        <FaExclamationTriangle className="text-danger me-1" size={12} />
-                        <small className="text-danger">{formErrors.email}</small>
-                      </div>
-                    )}
-                    {touchedFields.email && !formErrors.email && form.email && (
-                      <div className="d-flex align-items-center mt-1">
-                        <FaCheck className="text-success me-1" size={12} />
-                        <small className="text-success">Valide</small>
-                      </div>
-                    )}
-                  </Form.Group>
-                </Col>
             </Row>
           </div>
 
-          {/* TUTEUR */}
+          {/* INFORMATIONS DU TUTEUR */}
           <div className="p-6 sm:p-8 rounded-xl shadow-2xl ring-1 ring-gray-200">
             <div className="flex items-center text-indigo-600 mb-6 border-b pb-4 border-indigo-100">
               <FaUserAlt className="w-6 h-6 mr-3" />
@@ -615,7 +554,7 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
             </Row>
           </div>
 
-          {/* INSCRIPTION */}
+          {/* DÉTAILS DE L'INSCRIPTION */}
           <div className="p-6 sm:p-8 rounded-xl shadow-2xl ring-1 ring-gray-200">
             <div className="flex items-center text-indigo-600 mb-6 border-b pb-4 border-indigo-100">
               <UserPlus className="w-6 h-6 mr-3" />
@@ -624,8 +563,28 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
             <Row>
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Date d'inscription *</Form.Label><Form.Control type="date" name="dateinscrit" value={form.dateinscrit} onChange={handleChange} isInvalid={!!errors.dateinscrit} /><Form.Control.Feedback type="invalid">{errors.dateinscrit}</Form.Control.Feedback></Form.Group></Col>
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Année scolaire *</Form.Label><Form.Select name="anneesco" value={form.anneesco} onChange={handleChange} isInvalid={!!errors.anneesco}><option value="">-- Choisir l'année scolaire --</option>{generateAnnee().map(a => <option key={a}>{a}</option>)}</Form.Select><Form.Control.Feedback type="invalid">{errors.anneesco}</Form.Control.Feedback></Form.Group></Col>
-              <Col lg={6}><Form.Group className="mb-2"><Form.Label>Durée *</Form.Label><Form.Select name="duree" value={form.duree} onChange={handleChange} isInvalid={!!errors.duree}><option value="">--choisir la durée--</option> <option>3 mois</option><option>2 ans</option></Form.Select><Form.Control.Feedback type="invalid">{errors.duree}</Form.Control.Feedback></Form.Group></Col>
+              <Col lg={6}><Form.Group className="mb-2"><Form.Label>Durée *</Form.Label><Form.Select name="duree" value={form.duree} onChange={handleChange} isInvalid={!!errors.duree}><option value="">--choisir la durée--</option><option>3 mois</option><option>2 ans</option></Form.Select><Form.Control.Feedback type="invalid">{errors.duree}</Form.Control.Feedback></Form.Group></Col>
               <Col lg={6}><Form.Group className="mb-2"><Form.Label>Type de formation</Form.Label><Form.Select name="type_formation" value={form.type_formation} onChange={handleChange}><option>Court Terme</option><option>Long Terme</option></Form.Select></Form.Group></Col>
+
+              {/* Année d'étude (visible seulement pour les formations de 2 ans) */}
+              {form.duree === "2 ans" && (
+                <Col lg={6}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Année d'étude *</Form.Label>
+                    <Form.Select
+                      name="annee_etude"
+                      value={form.annee_etude}
+                      onChange={handleChange}
+                      isInvalid={!!errors.annee_etude}
+                    >
+                      <option value="">-- Choisir l'année --</option>
+                      <option value="1ere année">1ère année</option>
+                      <option value="2eme année">2ème année</option>
+                    </Form.Select>
+                    <Form.Control.Feedback type="invalid">{errors.annee_etude}</Form.Control.Feedback>
+                  </Form.Group>
+                </Col>
+              )}
             </Row>
           </div>
 
@@ -636,31 +595,13 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
               <h5 className="items-center fw-bold">5. Détails de la Formation</h5>
             </div>
 
-            {/* Choix de la durée */}
-            <Row className="mb-3">
-              <Col lg={6}>
-                <Form.Group>
-                  <Form.Label>Durée de la formation</Form.Label>
-                  <Form.Select
-                    name="duree"
-                    value={form.duree}
-                    onChange={e => setForm(prev => ({ ...prev, duree: e.target.value }))}
-                  >
-                    <option value="">-- Choisir la durée --</option>
-                    <option value="3 mois">3 mois</option>
-                    <option value="2 ans">2 ans</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
             {/* Affichage des checkbox selon la durée */}
             <Row className="mb-3">
               <Col lg={12}>
                 <Form.Label>Formations disponibles ({form.duree})</Form.Label>
                 <div className="grid grid-cols-2 gap-3">
                   {parcoursOption
-                    .filter(p => p.duree === form.duree) // filtrer selon la durée choisie
+                    .filter(p => p.duree === form.duree)
                     .map((p) => (
                       <Form.Check
                         key={p.code_formation}
@@ -685,10 +626,10 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
             {parcoursForm.map((p, i) => (
               <Row key={i} className="align-items-center mb-2">
                 <Col lg={10}>
-                  <Form.Control 
-                    type="text" 
-                    value={p.nomformation} 
-                    readOnly 
+                  <Form.Control
+                    type="text"
+                    value={p.nomformation}
+                    readOnly
                   />
                 </Col>
                 <Col lg={2} className="text-center">
@@ -700,11 +641,12 @@ const NouvellePersonne = ({ show, handleClose, refreshList }) => {
             {parcoursForm.length === 0 && <p className="text-muted">Veuillez sélectionner au moins un parcours.</p>}
           </div>
 
+          {/* Bouton Ajouter Parcours (manuel) - optionnel */}
           <div className="mb-3">
             <Button variant="outline-primary" className="flex items-center gap-2 px-4 py-2 text-white bg-indigo-600 p-1 rounded" onClick={addNewParcours}><FaPlus /> Ajouter Parcours</Button>
           </div>
 
-          {/* BOUTONS */}
+          {/* BOUTONS DE SOUMISSION */}
           <div className="d-flex justify-content-between mt-4">
             <Button variant="outline-danger" onClick={handleClose}>Annuler</Button>
             <Button type="submit" variant="primary" className="gap-2 px-4 py-2 text-white bg-indigo-600 p-1 rounded">S'inscrire</Button>

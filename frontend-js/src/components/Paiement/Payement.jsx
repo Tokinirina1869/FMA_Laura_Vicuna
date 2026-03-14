@@ -1332,37 +1332,37 @@ function PaymentPage() {
 
                 <div className="shadow-2xl rounded-lg h-[750px] overflow-auto border border-gray-200">
                   <div className="shadow-2xl rounded-lg h-[750px] overflow-auto border border-gray-200">
-                    <table className="table-auto border-collapse">
-                      <thead>
-                        <tr className="sticky top-0 z-10 bg-indigo-600 dark:bg-indigo-800">
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                    <table className="table table-hover table-striped table-auto">
+                      <thead className='bg-indigo-600'>
+                        <tr className="sticky top-0 z-10 bg-indigo-600">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             N° Paiement
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             N° Matricule
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             N° Inscription
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Nom et Prénom(s)
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Date de Paiement
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Montant Payé (Ar)
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Reste (Ar)
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Frais Payés
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Mode de Paiement
                           </th>
-                          <th className="font-semibold text-white text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
+                          <th className="font-semibold  text-center border-b-2 border-white/30 bg-indigo-600 dark:bg-indigo-800 px-2 py-3 w-auto">
                             Actions
                           </th>
                         </tr>

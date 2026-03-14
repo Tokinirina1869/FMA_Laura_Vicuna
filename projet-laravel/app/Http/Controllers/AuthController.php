@@ -13,6 +13,15 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    public function index()
+    {
+        Log::info('Méthode index appelée'); // facultatif
+        $users = User::where('id', '!=', auth()->id())
+                    ->select('id', 'name', 'email', 'photo', 'role')
+                    ->get();
+        return response()->json($users);
+    }
+
     public function register(Request $request) {
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
@@ -186,90 +195,6 @@ class AuthController extends Controller
         }
     }
 
-
-    // public function update(Request $request, $id)
-    // {
-    //     $request->validate([
-    //         'name'     => 'required|string|max:255',
-    //         'email'    => 'required|email|unique:users,email,' . $id,
-    //         'current_password' => 'sometimes|required_with:new_password',
-    //         'new_password' => 'sometimes|min:6|confirmed',
-    //         'photo' => 'sometimes|string'
-    //     ]);
-
-    //     $user = User::find($id);
-    //     if(!$user){
-    //         return response()->json([
-    //             'status'    => 'Erreur',
-    //             'message'   => "Utilisateur introuvable.",
-    //         ], 404);
-    //     }
-
-    //     try {
-    //         $updateData = [
-    //             'name'  => $request->name,
-    //             'email' => $request->email,
-    //         ];
-
-    //         // DEBUG: Log pour voir ce qui est reçu
-    //         \Log::info('Photo received: ' . ($request->has('photo') ? 'YES' : 'NO'));
-    //         \Log::info('Photo length: ' . ($request->photo ? strlen($request->photo) : '0'));
-
-    //         // Gestion de la photo base64
-    //         if ($request->hasFile('photo')) {
-    //             if($request->photo && Storage::exists('public/' . $request->photo)) {
-    //                 Storage::delete('public/' . $request->photo);
-    //             }
-
-    //             $request->photo = $request->file('photo')->store('photos', 'public');
-    //         } 
-    //         else {
-    //             \Log::info('No photo to update or photo is null');
-    //         }
-
-    //         // Gestion du mot de passe
-    //         if ($request->filled('new_password')) {
-    //             if (!Hash::check($request->current_password, $user->password)) {
-    //                 return response()->json([
-    //                     'status'  => 'Erreur',
-    //                     'message' => 'Le mot de passe actuel est incorrect.',
-    //                 ], 422);
-    //             }
-                
-    //             $updateData['password'] = Hash::make($request->new_password);
-    //         }
-
-    //         \Log::info('Update data: ', $updateData);
-            
-    //         $user->update($updateData);
-
-    //         // Recharger l'utilisateur
-    //         $user->refresh();
-
-    //         \Log::info('User after update - photo: ' . $user->photo);
-
-    //         return response()->json([
-    //             'status'  => 'Succès',
-    //             'message' => 'Profil modifié avec succès.',
-    //             'data'    => [
-    //                 'id' => $user->id,
-    //                 'name' => $user->name,
-    //                 'email' => $user->email,
-    //                 'photo' => $user->photo ? asset('storage/' . $user->photo) : null,
-    //             ],
-    //         ], 200);
-
-    //     } catch (Exception $e) {
-    //         \Log::error('Erreur modification utilisateur: ' . $e->getMessage());
-    //         \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
-    //         return response()->json([
-    //             'status'  => 'Erreur Interne',
-    //             'message' => 'Une erreur est survenue lors de la modification.',
-    //             'error'   => config('app.debug') ? $e->getMessage() : null
-    //         ], 500);
-    //     }
-    // }
 
     public function login(Request $request)
     {

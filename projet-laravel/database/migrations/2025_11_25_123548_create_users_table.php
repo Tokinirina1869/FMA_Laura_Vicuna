@@ -12,8 +12,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('role');
-            $table->string('photo')->nullable(); // Maintenant nullable
+            $table->string('photo')->nullable(); 
+             $table->enum("role", [
+                'directrice',
+                'bde',
+                'secretaire_lycee',
+                'secretaire_cfp',
+            ])->default('bde');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

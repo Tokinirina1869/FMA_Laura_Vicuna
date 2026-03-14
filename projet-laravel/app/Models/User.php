@@ -112,4 +112,16 @@ class User extends Authenticatable
         return self::getRoles()[$this->role] ?? $this->role;
     }
 
+    // Dans le modèle User
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_user')
+                    ->withTimestamps();
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
 }

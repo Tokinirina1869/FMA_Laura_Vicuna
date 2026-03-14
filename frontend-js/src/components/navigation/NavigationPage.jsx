@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AppBar, Toolbar, IconButton, Typography, Menu, MenuItem, Drawer, List, ListItem, ListItemButton,
   ListItemIcon, ListItemText, Divider, Avatar, Button, Box, Stack } from "@mui/material";
-import { Menu as MenuIcon, Home, School, PersonAdd, MonetizationOn,
+import { Menu as MenuIcon, Home, School, PersonAdd, MonetizationOn, Share,
   Logout, Brightness4, Brightness7, AccountCircle } from "@mui/icons-material";
-import { FaHome, FaMoneyCheckAlt, FaSignOutAlt, FaUser, FaUserGraduate, FaUserPlus } from "react-icons/fa";
+import { FaHome, FaMoneyCheckAlt, FaSignOutAlt, FaUser, FaUserGraduate, FaUserPlus, FaSchool, FaSpeakap } from "react-icons/fa";
 import fma from "../../assets/fma.png";
 import { AuthContext } from "../Users/AuthContext";
 
@@ -22,6 +22,7 @@ const NavigationPage = ({ handleMenuChange, onLogout, onProfil}) => {
     { key: "eleve", text: "Lycée", icon: <PersonAdd color="primary" />, label: "Lycée", iconDesktop: <FaUserPlus size={20} color="primary" /> },
     { key: "formation", text: "CFP", icon: <School color="primary" />, label: "CFP", iconDesktop: <FaUserGraduate size={20} color="primary" /> },
     { key: "paiement", text: "Paiement", icon: <MonetizationOn color="primary" />, label: "Paiement", iconDesktop: <MonetizationOn size={20} /> },
+    { key: "chat", text: "Conversation", icon: <FaSpeakap color="primary" />, label: "Conversation", iconDesktop: <FaSpeakap size={20} color="primary" /> },
   ];
 
   // Filtrer les menus en fonction du rôle
@@ -31,10 +32,10 @@ const NavigationPage = ({ handleMenuChange, onLogout, onProfil}) => {
       return allMenus; 
     }
     if (role === 'secretaire_lycee') {
-      return allMenus.filter(m => m.key === 'eleve' || m.key === 'paiement');
+      return allMenus.filter(m => m.key === 'eleve' || m.key === 'paiement' || m.key == "chat");
     }
     if (role === 'secretaire_cfp') {
-      return allMenus.filter(m => m.key === 'formation' || m.key === 'paiement');
+      return allMenus.filter(m => m.key === 'formation' || m.key === 'paiement' || m.key == "chat");
     }
     return []; 
   };

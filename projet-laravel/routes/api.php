@@ -13,6 +13,9 @@ use App\Http\Controllers\PersonneController;
 use App\Http\Controllers\PaiementController;
 use App\Http\Controllers\DashController;
 use App\Http\Controllers\ReinscriptionController;
+use App\Http\Controllers\ReinscriptionFormationController;
+use App\Http\Controllers\Api\ChatController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -88,7 +91,7 @@ Route::get('/inscriptions', [InscriptionCompleteController::class, 'show1']);
 Route::get('/Inscriptions', [InscriptionCompleteController::class, 'getAllInscriptions']);
 
 // Formations
-ROute::get('/personne/matricule/{matricule}', [InscriptionCompleteController::class, 'shwoByMatricule'])->where('matricule', '.*');
+ROute::get('/personne/matricule/{matricule}', [InscriptionCompleteController::class, 'showByMatricule'])->where('matricule', '.*');
 Route::get('/filterDatePro', [InscriptionCompleteController::class, 'index']);
 Route::get('/formations/effectifs', [InscriptionCompleteController::class, 'getEffectifsParFormation']);
 Route::get('/formations/trimestre', [InscriptionCompleteController::class, 'getEffectifsTrimestriels']);
@@ -120,10 +123,19 @@ Route::get('/eleve/effectifs', [InscriptionController::class, 'getEffectifsParCl
 Route::get('/eleve/Annee', [InscriptionController::class, 'getEffectifsParAnnee']);
 
 Route::post('/reinscrire', [ReinscriptionController::class, 'reinscrire']);
+Route::post('/reinscrirecfp', [ReinscriptionFormationController::class, 'reinscrire']);
 Route::get('/listereinscrit1', [ReinscriptionController::class, 'index']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('students', StudentController::class);
+    Route::get('/conversations', [ChatController::class, 'index']);
+    Route::post('/conversations', [ChatController::class, 'store']);
+    Route::get('/conversations/{conversation}', [ChatController::class, 'show']);
+    Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
+    Route::post('/conversations/{conversation}/read', [ChatController::class, 'markAsRead']);
+
+    Route::get('/users', [AuthController::class, 'index']);
 });
+

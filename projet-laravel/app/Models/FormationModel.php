@@ -17,6 +17,7 @@ class FormationModel extends Model
     protected $fillable = [
         'no_inscrit',
         'duree',
+        'annee_etude',
         'type_formation',
     ];
     
@@ -25,14 +26,6 @@ class FormationModel extends Model
         return $this->belongsTo(Inscription::class, 'no_inscrit', 'no_inscrit');
     }
     
-    // public function parcours() {
-    //     return $this->belongsToMany(
-    //         Parcours::class,
-    //         'suivres',
-    //         'no_inscrit',
-    //         'code_formation'
-    //     );
-    // }
 
     public function parcours()
     {

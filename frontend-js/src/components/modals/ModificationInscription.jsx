@@ -29,7 +29,6 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
     cin: "",
     datedel: "",
     lieucin: "",
-    email: "",
     nompere: "",
     nommere: "",
     nomtuteur: "",
@@ -52,15 +51,13 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
   const watchCin = watch("cin");
   const watchPhoneParent = watch("phoneparent");
   const watchPhoneTuteur = watch("phonetuteur");
-  const watchEmail = watch("email");
 
   // Validation patterns CORRIGÉS - simplifiés
   const validationPatterns = {
-    cin: /^[0-9]*$/, // Permet uniquement des chiffres
-    phone: /^[0-9]*$/, // Permet uniquement des chiffres
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, // Validation email standard
-    name: /^[a-zA-ZÀ-ÿ\s'-]*$/, // Lettres, espaces, apostrophes, tirets
-    location: /^[a-zA-ZÀ-ÿ0-9\s',.()-]*$/, // Lettres, chiffres, ponctuation basique
+    cin: /^[0-9]*$/,
+    phone: /^[0-9]*$/, 
+    name: /^[a-zA-ZÀ-ÿ\s'-]*$/,
+    location: /^[a-zA-ZÀ-ÿ0-9\s',.()-]*$/,
   };
 
   // Messages d'erreur
@@ -68,7 +65,6 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
     required: "Ce champ est obligatoire",
     cin: "Le CIN ne doit contenir que des chiffres",
     phone: "Le numéro ne doit contenir que des chiffres",
-    email: "Format d'email invalide",
     name: "Caractères non autorisés",
     location: "Caractères non autorisés",
     date: "Date invalide",
@@ -112,7 +108,6 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
         cin: personne.cin || "",
         datedel: personne.datedel || "",
         lieucin: personne.lieucin || "",
-        email: personne.email || "",
         nompere: personne.nompere || "",
         nommere: personne.nommere || "",
         nomtuteur: personne.nomtuteur || "",
@@ -167,12 +162,6 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
       validatePhoneField("phonetuteur", watchPhoneTuteur);
     }
   }, [watchPhoneTuteur]);
-
-  useEffect(() => {
-    if (watchEmail) {
-      validateField("email", watchEmail, validationPatterns.email, errorMessages.email);
-    }
-  }, [watchEmail]);
 
   // Validation CIN - seulement quand le champ est complet
   const validateCinField = (fieldName, value) => {
@@ -835,37 +824,6 @@ const ModificationInscription = ({ show, handleClose, personneData, refreshList 
                     <div className="d-flex align-items-center mt-1">
                       <FaExclamationTriangle className="text-danger me-1" size={12} />
                       <small className="text-danger">{formErrors.lieucin}</small>
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-
-              <Col lg={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-semibold">Email</Form.Label>
-                  <div className="position-relative">
-                    <Mail size={16} className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" />
-                    <Form.Control
-                      type="email"
-                      {...register("email")}
-                      value={form.email}
-                      onChange={handleChange}
-                      onBlur={() => handleFieldBlur("email")}
-                      className="ps-5"
-                      isInvalid={touchedFields.email && formErrors.email}
-                      isValid={touchedFields.email && !formErrors.email && form.email}
-                    />
-                  </div>
-                  {touchedFields.email && formErrors.email && (
-                    <div className="d-flex align-items-center mt-1">
-                      <FaExclamationTriangle className="text-danger me-1" size={12} />
-                      <small className="text-danger">{formErrors.email}</small>
-                    </div>
-                  )}
-                  {touchedFields.email && !formErrors.email && form.email && (
-                    <div className="d-flex align-items-center mt-1">
-                      <FaCheck className="text-success me-1" size={12} />
-                      <small className="text-success">Valide</small>
                     </div>
                   )}
                 </Form.Group>

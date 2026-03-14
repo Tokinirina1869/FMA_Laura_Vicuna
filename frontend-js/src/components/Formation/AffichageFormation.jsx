@@ -335,11 +335,11 @@ function AffichageFormation({ formations }) {
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
   const [loading, setLoading] = useState(false);
-  const [searchMat, setSearchMat] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [anneeFilter, setAnneeFilter] = useState('');
+
   const ITEMS_PER_PAGE = 14;
 
-  const openNewPersonne = (p) => { setSelectedPersonne(p); setShowPersonne(true) };
   const closeNewPersonne = () => {setSelectedPersonne(null); setShowPersonne(false) };
 
   const openModalCarte = useCallback((student) => {
@@ -742,7 +742,7 @@ function AffichageFormation({ formations }) {
     setActiveCategory("Tous");
     setDateDebut("");
     setDateFin("");
-    setSearchMat("");
+    setAnneeFilter('');
     setCurrentPage(1);
     Swal.fire({
       icon:'info', 
@@ -800,7 +800,7 @@ function AffichageFormation({ formations }) {
     }
   };
 
-  const filterPersonnes = (personnesList, query, category) => {
+  const filterPersonnes = (personnesList, query, category, annee) => {
     return personnesList.filter(p => {
       const q = query.toLowerCase().trim();
       
@@ -818,13 +818,15 @@ function AffichageFormation({ formations }) {
         if (!hasMatchingParcours) return false;
       }
 
+      if (annee && p.inscription?.anneesco !== annee) return false;
+
       return true;
     });
   };
 
   const filteredPersonnes = useMemo(() => {
-    return filterPersonnes(allPersonnes, searchQuery, activeCategory);
-  }, [allPersonnes, searchQuery, activeCategory]); 
+    return filterPersonnes(allPersonnes, searchQuery, activeCategory, anneeFilter);
+  }, [allPersonnes, searchQuery, activeCategory, anneeFilter]); 
 
   // Pagination
   const totalPages = Math.ceil(filteredPersonnes.length / ITEMS_PER_PAGE);
@@ -834,66 +836,19 @@ function AffichageFormation({ formations }) {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  const handleSearchMat = async () => {
-    if(!searchMat.trim()){
-      Swal.fire({
-        title: 'Attention',
-        text: 'Veuillez entrer un matricule pour la recherche.',
-        icon: 'warning',
-        customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-      });
-      return;
-    }
-
-    const urlMat = `${url}/personne/matricule/${searchMat.trim()}`;
-    setLoading(true);
-
-    try{
-      const res = await axios.get(urlMat);
-      const personneData = res.data;
-
-      if(personneData && Object.keys(personneData).length > 0) {
-        openNewPersonne(personneData);
-        setSearchMat("");
-
-        Swal.fire({
-          icon: 'success',
-          text: `Matricule trouvé : ${personneData.personne?.nom} ${personneData.personne?.prenom}.`,
-          background: isDark ? '#1e1e2f' : '#fff',
-          color: isDark ? 'white' : 'black',
-          timer: 3000,
-          position: "center",
-          showConfirmButton: false,
-        });
-      }
-      else {
-        Swal.fire({
-          title: 'Introuvable', 
-          text: `Aucune personne trouvée avec le matricule ${searchMat}.`, 
-          icon: 'error',
-          customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-        });
-      }
-
-    } 
-    catch (error) {
-      console.error("Erreur de recherche par matricule:", error);
-      Swal.fire({
-        title: 'Erreur',
-        text: 'Impossible de récupérer les données pour ce matricule.',
-        icon: 'error',
-        customClass: { popup: isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-800' }
-      });
-    } 
-    finally {
-      setLoading(false);
-    }
-  }
-
   const renderParcours = (parcours) => {
     if (!parcours || parcours.length === 0) return "---";
     const limitedParcours = parcours.slice(0, 2).map(p => p.nomformation).join(', ');
     return parcours.length > 2 ? `${limitedParcours}, ...` : limitedParcours;
+  };
+
+  const generateAnnee = () => {
+      const currentAnnee = new Date().getFullYear();
+      const years = [];
+      for (let annee = 2020; annee <= currentAnnee; annee++) {
+          years.push(`${annee}-${annee + 1}`);
+      }
+      return years.reverse();
   };
 
   return (
@@ -962,7 +917,6 @@ function AffichageFormation({ formations }) {
           </div>
         </div>
 
-        {/* LIGNE 2: FILTRES CATÉGORIE & RECHERCHE MATRICULE */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100/50">
            {/* Filtres Catégories */}
           <div className="flex flex-wrap gap-2">
@@ -986,18 +940,16 @@ function AffichageFormation({ formations }) {
               ))
             )}
           </div>
-          
-          {/* Recherche Matricule (Autofill/Modal) */}
-          <div className="flex items-stretch gap-2 w-full sm:w-auto">
-              <input type="text" placeholder="Rechercher par Matricule (Autofill)" value={searchMat} 
-                onChange={(e) => setSearchMat(e.target.value)}
-                className={`flex-grow sm:min-w-[250px] pl-4 pr-4 py-2 rounded-lg focus:ring-green-500 focus:border-green-500`}/>
-              <button onClick={handleSearchMat} disabled={loading} 
-                className={`px-4 py-2 text-white rounded-lg shadow font-semibold transition ${
-                    loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-                }`}>
-                  <FaSearch className="w-5 h-5" />
-              </button>
+
+          <div className="flex flex-wrap gap-2">
+            <label className="text-center text-medium">Filtre par année scolaire </label>
+            <select id="anneeScolaire" value={anneeFilter} onChange={(e) => {setAnneeFilter(e.target.value); setCurrentPage(1)}}
+                className="text-center p-2 rounded shadow-sm"
+                required
+            >
+                <option value="">--- Toutes les annees---</option>
+                {generateAnnee().map(a => <option key={a}>{a}</option>)}
+            </select>
           </div>
         </div>
       </div>
@@ -1005,19 +957,19 @@ function AffichageFormation({ formations }) {
       {/* --- TABLEAU SIMPLIFIÉ (Desktop) --- */}
       <div className={`hidden md:block shadow-xl rounded-xl ring-1 overflow-x-auto transition duration-300`}>
         <div className="max-h-[70vh] overflow-y-auto">
-          <table className="min-w-full divide-y table-fixed">
-            <thead className={`sticky top-0 bg-indigo-600`}>
+          <table className="table table-hove table-striped">
+            <thead className="p-3 sticky top-0 bg-indigo-600 ">
               <tr>
-                <th className="px-4 py-2 text-center font-semibold w-auto">N° Matricule</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">Noms & Prénom(s)</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">Date et Lieu de Naissance</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">Photo</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">CIN</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">Formation Suivie</th>
-                <th className="px-4 py-2 text-center font-semibold w-auto">Actions</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">N° Matricule</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">Noms & Prénom(s)</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">Date et Lieu de Naissance</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">Photo</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">CIN</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">Formation Suivie</th>
+                <th className="px-4 py-2 text-center font-bold w-auto">Actions</th>
               </tr>
             </thead>
-            <tbody className={`divide-y`}>
+            <tbody className="divide-y">
                 {currentData.length > 0 ? (
                   currentData.map((liste, idx) => (
                     <tr key={idx}>
@@ -1300,17 +1252,17 @@ function AffichageFormation({ formations }) {
                     <div className="p-4 space-y-4">
                       <InfoRow
                         icon={<FaUserTie className="text-blue-500" />}
-                        label="Père"
+                        label="Fils de"
                         value={selectedPersonne.inscription?.personne?.nompere}
                       />
                       <InfoRow
                         icon={<FaUserFriends className="text-pink-500" />}
-                        label="Mère"
+                        label="Fille de"
                         value={selectedPersonne.inscription?.personne?.nommere}
                       />
                       <InfoRow
                         icon={<FaPhone className="text-green-500" />}
-                        label="Téléphone Parent"
+                        label="Téléphone"
                         value={selectedPersonne.inscription?.personne?.phoneparent}
                       />
                       <InfoRow
@@ -1369,6 +1321,11 @@ function AffichageFormation({ formations }) {
                         icon={<FaClock className="text-orange-500" />}
                         label="Type de Formation"
                         value={selectedPersonne.type_formation || "Non spécifié"}
+                      />
+                      <InfoRow
+                        icon={<FaClock className="text-orange-500" />}
+                        label="Annee de la Formation"
+                        value={selectedPersonne.annee_etude || "3 mois"}
                       />
 
                       {/* Formations */}
@@ -1586,7 +1543,7 @@ function AffichageFormation({ formations }) {
 }
 
 // Composant utilitaire pour les détails mobiles
-const DetailMobile = ({ label, value, isBold = false, className = '', isDark = false }) => (
+const DetailMobile = ({ label, value, className = ''}) => (
   <div className={className}>
     <span className={`font-medium`}>{label}: </span>
     <span className='fw-bold'>{value}</span>

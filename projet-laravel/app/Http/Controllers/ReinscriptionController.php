@@ -5,14 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Inscription;
 use App\Models\InscriptionAcademie;
 use App\Models\Reinscription;
+use App\Models\Personne;
+use App\Models\FormationModel;
+use App\Models\Parcours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class ReinscriptionController extends Controller
 {
-    /**
-     * Afficher la liste des réinscriptions (optionnel).
-     */
+   
     public function index()
     {
         $reinscriptions = Reinscription::with(['inscription.personne', 'ancienNiveau', 'nouveauNiveau', 'user'])->get();
@@ -66,40 +70,4 @@ class ReinscriptionController extends Controller
         ], 201);
     }
 
-    /**
-     * Mettre à jour une réinscription (rare, mais possible).
-     */
-    public function update(Request $request, $id)
-    {
-        $reinscription = Reinscription::find($id);
-        if (!$reinscription) {
-            return response()->json(['message' => 'Réinscription non trouvée'], 404);
-        }
-
-        $request->validate([
-            'classe' => 'nullable|string|max:100',
-            // autres champs si nécessaire
-        ]);
-
-        $reinscription->update($request->only('classe'));
-
-        return response()->json([
-            'message' => 'Réinscription mise à jour',
-            'reinscription' => $reinscription,
-        ]);
-    }
-
-    /**
-     * Supprimer une réinscription (optionnel).
-     */
-    public function destroy($id)
-    {
-        $reinscription = Reinscription::find($id);
-        if (!$reinscription) {
-            return response()->json(['message' => 'Réinscription non trouvée'], 404);
-        }
-
-        $reinscription->delete();
-        return response()->json(['message' => 'Réinscription supprimée']);
-    }
 }

@@ -5,6 +5,8 @@ import NouvellePersonne from "../modals/NouvellePersonne";
 import ModificationInscription from "../modals/ModificationInscription";
 import axios from "axios";
 import { FaGraduationCap } from "react-icons/fa";
+import ReinscriptionCfp from "../modals/ReinscriptionCfp";
+
 const url = "http://127.0.0.1:8000/api";
 
 const ListeFormation = ({ onViewDashPro }) => {
@@ -13,6 +15,31 @@ const ListeFormation = ({ onViewDashPro }) => {
   const [selectedPersonne, setSelectedPersonne] = useState(null);
   const [formationsData, setFormationsData] = useState([]);
   
+  const [showReinscription, setShowReinscription] = useState(false);
+  const [selectedMat, setSelectedMat] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
+
+  const openReinscription = (mat) => {
+    setSelectedMat(mat);
+    setShowReinscription(true);
+  }
+
+  const closeReinscription = () => {
+    setShowReinscription(false);
+    setSelectedMat('');
+  }
+
+  const handleReinscriptionSuccess = (data) => {
+      console.log('Réinscription réussie !', data);
+      closeReinscription();
+      // Optionnel : rafraîchir la liste des élèves
+      setRefreshTrigger(prev => !prev);
+  };
+  
+  const handleRefresh = () => {
+      setRefreshTrigger(prev => !prev);
+  };
+
   const openNewPersonne = () => setShowPersonne(true);
   const closeNewPersonne = () => setShowPersonne(false); 
 
@@ -61,15 +88,28 @@ const ListeFormation = ({ onViewDashPro }) => {
           <Plus className="w-4 h-4" />
           Nouvelle Inscription
         </button>
-        <button onClick={openNewPersonne} className="flex items-center gap-1 px-2 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
+        <button onClick={() => openReinscription('26/ANG/10')} className="flex items-center gap-1 px-2 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700">
           <Plus className="w-4 h-4" />
           Réinscription
         </button>
       </div>
 
+      {showReinscription && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg p-4 max-w-3xl w-full overflow-y-auto">
+                <ReinscriptionCfp
+                    show={showReinscription}
+                    handleclose={closeReinscription}
+                    initialMatricule={selectedMat}
+                    onReinscriptionSuccess={handleReinscriptionSuccess}
+                />
+            </div>
+        </div>
+      )}
+
       <div className="p-4 md:p-6 flex-1">
         {/* Passer les données mises à jour et la fonction d'édition */}
-        <AffichageFormation formations={formationsData} onEdit={openModification}/>
+        <AffichageFormation formations={formationsData} onEdit={openModification} refreshTrigger={refreshTrigger}/>
       </div>
 
       <ModificationInscription 
@@ -82,7 +122,7 @@ const ListeFormation = ({ onViewDashPro }) => {
       <NouvellePersonne 
         show={showPersonne}  
         handleClose={closeNewPersonne}
-        refreshList={fetchFormations} 
+        refreshList={handleRefresh} 
       />
     </div>
   );

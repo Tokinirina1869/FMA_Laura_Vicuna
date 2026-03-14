@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const url = 'http://localhost:8000/api';
 
@@ -17,7 +18,6 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Charger la liste des niveaux depuis l'API
   useEffect(() => {
     const fetchNiveaux = async () => {
       try {
@@ -54,11 +54,10 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
 
     try {
       const response = await axios.get(`${url}/personne/matricule/${matricule.trim()}`);
-      const data = response.data; // C'est l'objet Inscription
+      const data = response.data; 
       console.log('Données reçues :', data);
 
       setStudent(data);
-      // Pré-sélectionner le niveau actuel s'il existe
       if (data.inscriptionacademique?.niveau?.code_niveau) {
         setNewLevelCode(data.inscriptionacademique.niveau.code_niveau);
       }
@@ -76,7 +75,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
     for (let annee = 2020; annee <= currentAnnee; annee++) {
       years.push(`${annee}-${annee + 1}`);
     }
-    return years.reverse(); // Afficher l'année la plus récente en premier
+    return years.reverse(); 
   };
 
   // Valider la réinscription (création d'une nouvelle inscription)
@@ -117,9 +116,13 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
         }
       }
 
-      setSuccess(
-        `Réinscription réussie pour ${student.personne?.prenom} ${student.personne?.nom} au niveau ${response.data.reinscription?.nouveau_niveau?.nomniveau || newLevelCode} pour l'année ${anneeScolaire}`
-      );
+      Swal.fire({
+        icon: "success",
+        text: `Réinscription réussie pour ${student.personne?.prenom} ${student.personne?.nom} au niveau ${response.data.reinscription?.nouveau_niveau?.nomniveau || newLevelCode} pour l'année ${anneeScolaire}`,
+        background: '#1e1e2f',
+        color: "white",
+        showConfirmButton: true,
+      })
 
       if(onReinscriptionSuccess) {
         onReinscriptionSuccess(response.data);
@@ -136,16 +139,24 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
   };
 
   return (
-    <div show={show} className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Réinscription d'un élève
-        </h2>
+    <div show={show} className="bg-gray-100 z-[999] flex items-center justify-center p-4">
+      <div className="max-w-lg w-full bg-white rounded-xl shadow-lg p-6">
+        <div className="flex justify-between items-center mb-5 bg-indigo-600 p-3 rounded">
+          <h2 className="text-3xl text-center font-bold text-white">
+            Réinscription d'un élève
+          </h2>
+          <button
+            onClick={handleclose}
+            className="text-red-500 hover:text-red-700 text-5xl font-bold"
+          >
+            &times;
+          </button>
+        </div>
 
         {/* Formulaire de recherche */}
         <form onSubmit={handleSearch} className="space-y-4">
           <div>
-            <label htmlFor="matricule" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="matricule" className="block text-sm font-bold text-gray-700">
               Matricule de l'élève
             </label>
             <input
@@ -154,7 +165,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
               value={matricule}
               onChange={(e) => setMatricule(e.target.value)}
               disabled={loading}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="mt-1 block w-full p-2 text-center rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               placeholder="Ex: 26/LYC/87"
             />
           </div>
@@ -181,25 +192,25 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
 
         {/* Informations de l'élève trouvé */}
         {student && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 py-5 px-5">
+            <h3 className="text-lg font-bold text-gray-800 mb-3 text-center">
               Élève trouvé
             </h3>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p>
-                <span className="font-medium text-gray-700">Matricule :</span>{' '}
+            <div className="space-y-2 text-sm text-gray-600 p-2">
+              <p className=''>
+                <span className="font-semibold text-gray-700">Matricule :</span>{' '}
                 {student.matricule}
               </p>
               <p>
-                <span className="font-medium text-gray-700">Nom :</span>{' '}
+                <span className="font-semibold text-gray-700">Nom :</span>{' '}
                 {student.personne?.nom}
               </p>
               <p>
-                <span className="font-medium text-gray-700">Prénom :</span>{' '}
+                <span className="font-semibold text-gray-700">Prénom :</span>{' '}
                 {student.personne?.prenom}
               </p>
               <p>
-                <span className="font-medium text-gray-700">Niveau actuel :</span>{' '}
+                <span className="font-semibold text-gray-700">Niveau actuel :</span>{' '}
                 {student.inscriptionacademique?.niveau?.nomniveau || 'Non défini'}
               </p>
             </div>
@@ -207,7 +218,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
             {/* Formulaire de réinscription */}
             <form onSubmit={handleReinscription} className="mt-4 space-y-4">
               <div>
-                <label htmlFor="newLevel" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="newLevel" className="block text-sm font-semibold text-gray-700">
                   Nouveau niveau
                 </label>
                 <select
@@ -215,7 +226,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
                   value={newLevelCode}
                   onChange={(e) => setNewLevelCode(e.target.value)}
                   disabled={loading || niveaux.length === 0}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">--- Sélectionner un niveau ---</option>
                   {niveaux.map((niveau) => (
@@ -228,7 +239,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
 
               {/* Champ Année scolaire */}
               <div>
-                <label htmlFor="anneeScolaire" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="anneeScolaire" className="block text-sm font-semibold text-gray-700">
                   Année scolaire <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -237,7 +248,7 @@ const ReinscriptionLycee = ({ show, handleclose, initialMatricule ='', onReinscr
                   value={anneeScolaire}
                   onChange={(e) => setAnneeScolaire(e.target.value)}
                   disabled={loading}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
+                  className="mt-1 block w-full p-2 rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100"
                   placeholder="Ex: 2026-2027"
                   required
                 >

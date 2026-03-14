@@ -137,7 +137,7 @@ function LoginForm({ roles }) {
     }
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/login", {
+      const res = await axios.post("/api/login", {
         email: formData.email,
         password: formData.password
       });
@@ -153,6 +153,10 @@ function LoginForm({ roles }) {
         sessionStorage.setItem("token", res.data.token);
         sessionStorage.setItem("user", JSON.stringify(res.data.user));
       }
+
+
+      // Configuration d'Axios pour inclure le token dans les futures requêtes
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
 
       // Utilisation du contexte
       login(res.data.token, res.data.user);
